@@ -1,30 +1,17 @@
 # React + TypeScript + Vite
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Complete E-commerce Website with Customer & Admin Functionality
 
-Currently, two official plugins are available:
+Sweets by Bella E-commerce Website
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+Build a complete e-commerce website for a cookie business with customer-facing storefront and admin capabilities to manage products, using React, Express, Supabase and Stripe.
 
-## Expanding the ESLint configuration
+Customer Flow: Home page with featured products, shop page with product listings, detailed product pages, cart functionality, and Stripe checkout integration
 
-If you are developing a production application, we recommend updating the configuration to enable type aware lint rules:
+Admin Panel: Secure login area for product management (add, edit, delete) with image upload capabilities
 
-- Configure the top-level `parserOptions` property like this:
+Database Structure: Products table with images, descriptions and pricing; Orders table to track customer purchases
 
-```js
-export default {
-  // other rules...
-  parserOptions: {
-    ecmaVersion: 'latest',
-    sourceType: 'module',
-    project: ['./tsconfig.json', './tsconfig.node.json'],
-    tsconfigRootDir: __dirname,
-  },
-}
-```
+API Architecture: RESTful endpoints for products, orders, checkout processing, and admin functions
 
-- Replace `plugin:@typescript-eslint/recommended` to `plugin:@typescript-eslint/recommended-type-checked` or `plugin:@typescript-eslint/strict-type-checked`
-- Optionally add `plugin:@typescript-eslint/stylistic-type-checked`
-- Install [eslint-plugin-react](https://github.com/jsx-eslint/eslint-plugin-react) and add `plugin:react/recommended` & `plugin:react/jsx-runtime` to the `extends` list
+Deployment: Frontend on Vercel/Netlify with backend services on Render/Heroku
