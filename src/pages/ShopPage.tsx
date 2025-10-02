@@ -69,7 +69,7 @@ const ShopPage = () => {
           console.log("Original image value:", image);
           
           // If image is a storage path (not a full URL), convert to public URL
-          if (image && !image.startsWith("http")) {
+          if (image && !image.startsWith("http") && supabase) {
             const { data: publicData } = supabase.storage
               .from("Cookies")
               .getPublicUrl(image);
