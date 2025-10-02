@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { Search, Filter, SlidersHorizontal } from "lucide-react";
+import { Search, Filter, SlidersHorizontal, ShoppingCart } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,6 +14,8 @@ import {
 import { Separator } from "@/components/ui/separator";
 // Import ProductCard as a default import
 import ProductCard from "../components/ProductCard";
+import { supabase } from "@/lib/supabaseClient";
+import { useCart } from "@/context/CartContext";
 
 interface Product {
   id: string;
@@ -25,62 +27,10 @@ interface Product {
 }
 
 const ShopPage = () => {
-  const [products, setProducts] = useState<Product[]>([
-    {
-      id: "1",
-      name: "Chocolate Chip Cookie",
-      description: "Classic chocolate chip cookies made with premium chocolate",
-      price: 2.99,
-      image:
-        "https://images.unsplash.com/photo-1499636136210-6f4ee915583e?w=800&q=80",
-      category: "classic",
-    },
-    {
-      id: "2",
-      name: "Double Chocolate Cookie",
-      description: "Rich chocolate cookies with chocolate chunks",
-      price: 3.49,
-      image:
-        "https://images.unsplash.com/photo-1618923850107-d1a234d7a73a?w=800&q=80",
-      category: "chocolate",
-    },
-    {
-      id: "3",
-      name: "Oatmeal Raisin Cookie",
-      description: "Hearty oatmeal cookies with plump raisins",
-      price: 2.79,
-      image:
-        "https://images.unsplash.com/photo-1590080875515-8a3a8dc5735e?w=800&q=80",
-      category: "classic",
-    },
-    {
-      id: "4",
-      name: "Peanut Butter Cookie",
-      description: "Soft peanut butter cookies with a sweet and salty flavor",
-      price: 3.29,
-      image:
-        "https://images.unsplash.com/photo-1584365685547-9a5fb6f3a70c?w=800&q=80",
-      category: "nutty",
-    },
-    {
-      id: "5",
-      name: "Sugar Cookie",
-      description: "Simple and sweet sugar cookies with a hint of vanilla",
-      price: 2.49,
-      image:
-        "https://images.unsplash.com/photo-1621236378699-8597faf6a11a?w=800&q=80",
-      category: "classic",
-    },
-    {
-      id: "6",
-      name: "Macadamia Nut Cookie",
-      description: "White chocolate chip cookies with macadamia nuts",
-      price: 3.99,
-      image:
-        "https://images.unsplash.com/photo-1590080874088-eec64895b423?w=800&q=80",
-      category: "nutty",
-    },
-  ]);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+  const { totalItems } = useCart();
 
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
@@ -93,6 +43,58 @@ const ShopPage = () => {
     "all",
     ...Array.from(new Set(products.map((product) => product.category))),
   ];
+
+  useEffect(() => {
+    const fetchProducts = async () => {
+      setIsLoading(true);
+      setError(null);
+      const { data, error } = await supabase
+        .from("Cookies")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        console.error("Supabase error:", error);
+        setError(`Database error: ${error.message}`);
+        setProducts([]);
+      } else {
+        console.log("Raw data from Supabase:", data);
+        console.log("Number of items:", data?.length || 0);
+        
+        // Cast price to number in case it's returned as string from numeric type
+        const normalized = (data || []).map((p: any) => {
+          let image = p.image ?? p.image_url ?? p.imageUrl ?? "";
+          
+          // Debug: log the original image value
+          console.log("Original image value:", image);
+          
+          // If image is a storage path (not a full URL), convert to public URL
+          if (image && !image.startsWith("http")) {
+            const { data: publicData } = supabase.storage
+              .from("Cookies")
+              .getPublicUrl(image);
+            image = publicData.publicUrl;
+            console.log("Converted to public URL:", image);
+          }
+          
+          console.log("Final image URL:", image);
+          
+          return {
+            id: p.id,
+            name: p.name,
+            description: p.description ?? "",
+            price: typeof p.price === "string" ? parseFloat(p.price) : p.price,
+            image,
+            category: p.category ?? "classic",
+          };
+        });
+        setProducts(normalized);
+      }
+      setIsLoading(false);
+    };
+
+    fetchProducts();
+  }, []);
 
   useEffect(() => {
     // Filter products based on search term and category
@@ -150,8 +152,12 @@ const ShopPage = () => {
               <Link to="/shop" className="font-bold underline">
                 Shop
               </Link>
-              <Link to="/cart" className="hover:underline">
-                Cart
+              <Link to="/cart" className="relative flex items-center gap-1 hover:underline">
+                <ShoppingCart className="h-5 w-5" />
+                <span>Cart</span>
+                <span className="ml-1 inline-flex items-center justify-center rounded-full bg-white/20 px-2 text-xs">
+                  {totalItems}
+                </span>
               </Link>
             </nav>
           </div>
@@ -230,7 +236,17 @@ const ShopPage = () => {
         <Separator className="my-6" />
 
         {/* Product Grid */}
-        {filteredProducts.length > 0 ? (
+        {isLoading ? (
+          <div className="text-center py-12">
+            <h3 className="text-xl font-medium mb-2">Loading products...</h3>
+            <p className="text-muted-foreground">Please wait a moment</p>
+          </div>
+        ) : error ? (
+          <div className="text-center py-12">
+            <h3 className="text-xl font-medium mb-2">Failed to load products</h3>
+            <p className="text-muted-foreground">{error}</p>
+          </div>
+        ) : filteredProducts.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
             {filteredProducts.map((product) => (
               <ProductCard
@@ -239,7 +255,8 @@ const ShopPage = () => {
                 name={product.name}
                 description={product.description}
                 price={product.price}
-                image={product.image}
+                imageUrl={product.image}
+                onAddToCart={() => {}}
               />
             ))}
           </div>

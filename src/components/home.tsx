@@ -2,6 +2,7 @@ import React from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { ShoppingCart, User } from "lucide-react";
+import { useCart } from "@/context/CartContext";
 import { Button } from "./ui/button";
 import { Card, CardContent } from "./ui/card";
 import ProductCard from "./ProductCard";
@@ -15,6 +16,7 @@ interface Product {
 }
 
 const HomePage = () => {
+  const { totalItems } = useCart();
   // Mock featured products data - would be fetched from API in a real implementation
   const featuredProducts: Product[] = [
     {
@@ -92,7 +94,7 @@ const HomePage = () => {
             <Link to="/cart" className="relative">
               <ShoppingCart className="h-6 w-6 text-foreground hover:text-primary transition-colors" />
               <span className="absolute -top-2 -right-2 bg-primary text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">
-                0
+                {totalItems}
               </span>
             </Link>
             <Link
@@ -162,7 +164,7 @@ const HomePage = () => {
                 name={product.name}
                 description={product.description}
                 price={product.price}
-                image={product.image}
+                imageUrl={product.image}
               />
             ))}
           </div>
@@ -205,102 +207,6 @@ const HomePage = () => {
                 <Link to="/about">Read More</Link>
               </Button>
             </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Testimonials */}
-      <section className="py-16 bg-background">
-        <div className="container mx-auto px-4">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-foreground mb-4">
-              What Our Customers Say
-            </h2>
-            <p className="text-muted-foreground max-w-2xl mx-auto">
-              Don't just take our word for it - here's what cookie lovers have
-              to say.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex flex-col items-center text-center">
-                  <div className="mb-4">
-                    <img
-                      src="https://api.dicebear.com/7.x/avataaars/svg?seed=Emily"
-                      alt="Customer"
-                      className="w-16 h-16 rounded-full"
-                    />
-                  </div>
-                  <p className="text-muted-foreground mb-4">
-                    "These are the best cookies I've ever had! The chocolate
-                    chip cookies remind me of my childhood."
-                  </p>
-                  <p className="font-semibold">Emily R.</p>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex flex-col items-center text-center">
-                  <div className="mb-4">
-                    <img
-                      src="https://api.dicebear.com/7.x/avataaars/svg?seed=Michael"
-                      alt="Customer"
-                      className="w-16 h-16 rounded-full"
-                    />
-                  </div>
-                  <p className="text-muted-foreground mb-4">
-                    "I ordered cookies for a company event and everyone loved
-                    them! Will definitely order again."
-                  </p>
-                  <p className="font-semibold">Michael T.</p>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex flex-col items-center text-center">
-                  <div className="mb-4">
-                    <img
-                      src="https://api.dicebear.com/7.x/avataaars/svg?seed=Sarah"
-                      alt="Customer"
-                      className="w-16 h-16 rounded-full"
-                    />
-                  </div>
-                  <p className="text-muted-foreground mb-4">
-                    "Fresh, delicious, and always on time. The oatmeal raisin
-                    cookies are my absolute favorite!"
-                  </p>
-                  <p className="font-semibold">Sarah L.</p>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      </section>
-
-      {/* Newsletter */}
-      <section className="py-16 bg-primary/10">
-        <div className="container mx-auto px-4 text-center">
-          <h2 className="text-3xl font-bold text-foreground mb-4">
-            Join Our Cookie Club
-          </h2>
-          <p className="text-muted-foreground max-w-2xl mx-auto mb-8">
-            Subscribe to our newsletter for special offers, new flavor
-            announcements, and baking tips.
-          </p>
-
-          <div className="flex flex-col sm:flex-row max-w-md mx-auto gap-4">
-            <input
-              type="email"
-              placeholder="Your email address"
-              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-            />
-            <Button>Subscribe</Button>
           </div>
         </div>
       </section>

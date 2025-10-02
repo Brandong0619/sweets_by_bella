@@ -1,71 +1,93 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
-import { Trash2, Plus, Minus, ShoppingBag } from "lucide-react";
+import { Trash2, Plus, Minus, ShoppingBag, MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-
-interface CartItem {
-  id: string;
-  name: string;
-  price: number;
-  quantity: number;
-  image: string;
-}
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
+import { useCart } from "@/context/CartContext";
+import { stripePromise } from "@/lib/stripe";
 
 const CartPage = () => {
-  // Mock cart data - would normally come from context or state management
-  const [cartItems, setCartItems] = useState<CartItem[]>([
-    {
-      id: "1",
-      name: "Chocolate Chip Cookies",
-      price: 12.99,
-      quantity: 2,
-      image:
-        "https://images.unsplash.com/photo-1499636136210-6f4ee915583e?w=400&q=80",
-    },
-    {
-      id: "2",
-      name: "Red Velvet Cookies",
-      price: 14.99,
-      quantity: 1,
-      image:
-        "https://images.unsplash.com/photo-1558961363-fa8fdf82db35?w=400&q=80",
-    },
-    {
-      id: "3",
-      name: "Oatmeal Raisin Cookies",
-      price: 10.99,
-      quantity: 3,
-      image:
-        "https://images.unsplash.com/photo-1590080874088-eec64895b423?w=400&q=80",
-    },
-  ]);
+  const { items: cartItems, updateQuantity, removeItem, subtotal } = useCart();
+  
+  // Delivery address state
+  const [needsDelivery, setNeedsDelivery] = useState(false);
+  const [deliveryAddress, setDeliveryAddress] = useState({
+    name: "",
+    street: "",
+    city: "",
+    state: "",
+    zipCode: "",
+    phone: "",
+    specialInstructions: ""
+  });
 
   // Calculate cart totals
-  const subtotal = cartItems.reduce(
-    (sum, item) => sum + item.price * item.quantity,
-    0,
-  );
-  const shipping = subtotal > 50 ? 0 : 5.99;
-  const tax = subtotal * 0.08; // 8% tax rate
-  const total = subtotal + shipping + tax;
+  const computedSubtotal = subtotal;
+  const total = computedSubtotal; // No tax or shipping
+
+  // Handle checkout
+  const handleCheckout = async () => {
+    if (cartItems.length === 0) {
+      alert('Your cart is empty!');
+      return;
+    }
+
+    if (needsDelivery) {
+      // Validate delivery address
+      const requiredFields = ['name', 'street', 'city', 'state', 'zipCode', 'phone'];
+      const missingFields = requiredFields.filter(field => !deliveryAddress[field as keyof typeof deliveryAddress]);
+      
+      if (missingFields.length > 0) {
+        alert(`Please fill in all required delivery fields: ${missingFields.join(', ')}`);
+        return;
+      }
+    }
+
+    try {
+      // Call backend to create Stripe checkout session
+      const response = await fetch('http://localhost:3001/create-checkout-session', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          items: cartItems,
+          deliveryInfo: needsDelivery ? deliveryAddress : null,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to create checkout session');
+      }
+
+      const { sessionId } = await response.json();
+      
+      // Redirect to Stripe checkout
+      const stripe = await stripePromise;
+      if (stripe) {
+        const { error } = await stripe.redirectToCheckout({
+          sessionId: sessionId,
+        });
+
+        if (error) {
+          console.error('Stripe checkout error:', error);
+          alert('Checkout failed. Please try again.');
+        }
+      }
+      
+    } catch (error) {
+      console.error('Checkout error:', error);
+      alert('Checkout failed. Please try again.');
+    }
+  };
 
   // Handle quantity changes
-  const updateQuantity = (id: string, newQuantity: number) => {
-    if (newQuantity < 1) return;
-
-    setCartItems(
-      cartItems.map((item) =>
-        item.id === id ? { ...item, quantity: newQuantity } : item,
-      ),
-    );
-  };
-
-  // Remove item from cart
-  const removeItem = (id: string) => {
-    setCartItems(cartItems.filter((item) => item.id !== id));
-  };
+  // updateQuantity and removeItem come from context
 
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
@@ -93,7 +115,7 @@ const CartPage = () => {
                     <div className="flex flex-col sm:flex-row">
                       <div className="w-full sm:w-32 h-32 bg-muted">
                         <img
-                          src={item.image}
+                          src={item.imageUrl}
                           alt={item.name}
                           className="w-full h-full object-cover"
                         />
@@ -101,9 +123,7 @@ const CartPage = () => {
                       <div className="flex-1 p-4 flex flex-col justify-between">
                         <div className="flex justify-between">
                           <h3 className="font-medium">{item.name}</h3>
-                          <p className="font-medium">
-                            ${item.price.toFixed(2)}
-                          </p>
+                          <p className="font-medium">${item.price.toFixed(2)}</p>
                         </div>
                         <div className="flex justify-between items-center mt-4">
                           <div className="flex items-center space-x-2">
@@ -146,32 +166,121 @@ const CartPage = () => {
               ))}
             </div>
 
-            {/* Order Summary */}
-            <div className="lg:col-span-1">
+            {/* Delivery Address & Order Summary */}
+            <div className="lg:col-span-1 space-y-6">
+              {/* Delivery Address Form */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <MapPin className="h-5 w-5" />
+                    Delivery Information
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex items-center space-x-2">
+                    <Checkbox 
+                      id="needsDelivery" 
+                      checked={needsDelivery}
+                      onCheckedChange={(checked) => setNeedsDelivery(checked as boolean)}
+                    />
+                    <Label htmlFor="needsDelivery">
+                      I need these cookies delivered
+                    </Label>
+                  </div>
+                  
+                  {needsDelivery && (
+                    <div className="space-y-4 pt-4 border-t">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <Label htmlFor="deliveryName">Full Name *</Label>
+                          <Input
+                            id="deliveryName"
+                            value={deliveryAddress.name}
+                            onChange={(e) => setDeliveryAddress(prev => ({...prev, name: e.target.value}))}
+                            placeholder="Your full name"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="deliveryPhone">Phone Number *</Label>
+                          <Input
+                            id="deliveryPhone"
+                            value={deliveryAddress.phone}
+                            onChange={(e) => setDeliveryAddress(prev => ({...prev, phone: e.target.value}))}
+                            placeholder="(555) 123-4567"
+                          />
+                        </div>
+                      </div>
+                      
+                      <div>
+                        <Label htmlFor="deliveryStreet">Street Address *</Label>
+                        <Input
+                          id="deliveryStreet"
+                          value={deliveryAddress.street}
+                          onChange={(e) => setDeliveryAddress(prev => ({...prev, street: e.target.value}))}
+                          placeholder="123 Main Street"
+                        />
+                      </div>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                          <Label htmlFor="deliveryCity">City *</Label>
+                          <Input
+                            id="deliveryCity"
+                            value={deliveryAddress.city}
+                            onChange={(e) => setDeliveryAddress(prev => ({...prev, city: e.target.value}))}
+                            placeholder="City"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="deliveryState">State *</Label>
+                          <Input
+                            id="deliveryState"
+                            value={deliveryAddress.state}
+                            onChange={(e) => setDeliveryAddress(prev => ({...prev, state: e.target.value}))}
+                            placeholder="CA"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="deliveryZip">ZIP Code *</Label>
+                          <Input
+                            id="deliveryZip"
+                            value={deliveryAddress.zipCode}
+                            onChange={(e) => setDeliveryAddress(prev => ({...prev, zipCode: e.target.value}))}
+                            placeholder="90210"
+                          />
+                        </div>
+                      </div>
+                      
+                      <div>
+                        <Label htmlFor="specialInstructions">Special Instructions</Label>
+                        <Textarea
+                          id="specialInstructions"
+                          value={deliveryAddress.specialInstructions}
+                          onChange={(e) => setDeliveryAddress(prev => ({...prev, specialInstructions: e.target.value}))}
+                          placeholder="Any special delivery instructions..."
+                          rows={3}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Order Summary */}
               <Card>
                 <CardContent className="p-6">
                   <h2 className="text-xl font-bold mb-4">Order Summary</h2>
                   <div className="space-y-4">
-                    <div className="flex justify-between">
-                      <span>Subtotal</span>
-                      <span>${subtotal.toFixed(2)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Shipping</span>
-                      <span>
-                        {shipping === 0 ? "Free" : `$${shipping.toFixed(2)}`}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Tax</span>
-                      <span>${tax.toFixed(2)}</span>
-                    </div>
-                    <Separator />
-                    <div className="flex justify-between font-bold">
+                    <div className="flex justify-between font-bold text-lg">
                       <span>Total</span>
                       <span>${total.toFixed(2)}</span>
                     </div>
-                    <Button className="w-full mt-4">Proceed to Checkout</Button>
+                    <p className="text-sm text-muted-foreground">
+                      No tax or shipping charges
+                    </p>
+                    <Button className="w-full mt-4" onClick={handleCheckout}>
+                      Proceed to Checkout
+                    </Button>
                     <div className="text-center mt-4">
                       <Link
                         to="/shop"
