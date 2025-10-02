@@ -58,7 +58,7 @@ const SuccessPage = () => {
 
   const fetchSessionDetails = async (sessionId: string) => {
     try {
-      const response = await fetch(`http://localhost:3001/session/${sessionId}`);
+      const response = await fetch(`https://sweets-by-bella-em82.vercel.app/session/${sessionId}`);
       if (response.ok) {
         const sessionData = await response.json();
         setOrderSummary({

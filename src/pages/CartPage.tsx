@@ -50,7 +50,7 @@ const CartPage = () => {
 
     try {
       // Call backend to create Stripe checkout session
-      const response = await fetch('http://localhost:3001/create-checkout-session', {
+        const response = await fetch('https://sweets-by-bella-em82.vercel.app/create-checkout-session', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
