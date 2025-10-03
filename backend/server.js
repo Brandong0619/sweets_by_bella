@@ -9,7 +9,11 @@ const PORT = process.env.PORT || 3001;
 // Middleware
 app.use(
   cors({
-    origin: process.env.FRONTEND_URL,
+    origin: [
+      process.env.FRONTEND_URL,
+      "https://sweets-by-bella-pln9.vercel.app",
+      "https://sweets-by-bella-git-71185b-brandon-gonzalezs-projects-98996044.vercel.app"
+    ],
     credentials: true,
   })
 );
