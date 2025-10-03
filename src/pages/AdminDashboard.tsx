@@ -51,6 +51,7 @@ import {
   Mail,
 } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
+import type { Database } from "@/types/supabase";
 
 interface Product {
   id: string;
@@ -61,35 +62,11 @@ interface Product {
   stock: number;
 }
 
-interface Order {
-  id: string;
-  stripe_session_id: string;
-  customer_name: string;
-  customer_email: string;
-  total_amount: number;
-  order_type: 'delivery' | 'pickup';
-  status: string; // Allow any string from Supabase
-  delivery_address?: {
-    name: string;
-    street: string;
-    city: string;
-    state: string;
-    zipCode: string;
-  };
-  delivery_phone?: string;
-  delivery_instructions?: string;
-  created_at: string;
-  updated_at: string;
-  order_items?: OrderItem[];
-}
+type Order = Database['public']['Tables']['orders']['Row'] & {
+  order_items?: Database['public']['Tables']['order_items']['Row'][];
+};
 
-interface OrderItem {
-  id: string;
-  product_name: string;
-  product_price: number;
-  quantity: number;
-  product_image?: string;
-}
+type OrderItem = Database['public']['Tables']['order_items']['Row'];
 
 const AdminDashboard = () => {
   // State for authentication
