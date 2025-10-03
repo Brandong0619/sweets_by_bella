@@ -78,6 +78,8 @@ const SuccessPage = () => {
         
         // Handle the case where line_items might be in a different format
         let items = [];
+        console.log('Line items structure:', sessionData.line_items);
+        
         if (sessionData.line_items && sessionData.line_items.data) {
           // If line_items has a data property (expanded format)
           items = sessionData.line_items.data.map((item: any) => ({
@@ -97,6 +99,9 @@ const SuccessPage = () => {
             imageUrl: item.price?.product?.images?.[0] || ''
           }));
         }
+        
+        console.log('Parsed items:', items);
+        console.log('Session metadata:', sessionData.metadata);
         
         setOrderSummary({
           items,
