@@ -48,48 +48,115 @@ const ShopPage = () => {
     const fetchProducts = async () => {
       setIsLoading(true);
       setError(null);
-      const { data, error } = await supabase
-        .from("Cookies")
-        .select("*")
-        .order("created_at", { ascending: false });
 
-      if (error) {
-        console.error("Supabase error:", error);
-        setError(`Database error: ${error.message}`);
-        setProducts([]);
-      } else {
-        console.log("Raw data from Supabase:", data);
-        console.log("Number of items:", data?.length || 0);
-        
-        // Cast price to number in case it's returned as string from numeric type
-        const normalized = (data || []).map((p: any) => {
-          let image = p.image ?? p.image_url ?? p.imageUrl ?? "";
-          
-          // Debug: log the original image value
-          console.log("Original image value:", image);
-          
-          // If image is a storage path (not a full URL), convert to public URL
-          if (image && !image.startsWith("http") && supabase) {
-            const { data: publicData } = supabase.storage
-              .from("Cookies")
-              .getPublicUrl(image);
-            image = publicData.publicUrl;
-            console.log("Converted to public URL:", image);
+      // If Supabase is not available, use mock data
+      if (!supabase) {
+        console.log("Supabase not available, using mock data");
+        const mockProducts: Product[] = [
+          {
+            id: "1",
+            name: "Chocolate Chip Cookie",
+            description: "Classic chocolate chip cookies made with premium chocolate.",
+            price: 3.99,
+            image: "https://images.unsplash.com/photo-1499636136210-6f4ee915583e?w=800&q=80",
+            category: "Classic"
+          },
+          {
+            id: "2",
+            name: "Sugar Cookie",
+            description: "Soft and sweet sugar cookies perfect for any occasion.",
+            price: 2.99,
+            image: "https://images.unsplash.com/photo-1558961363-fa8fdf82db35?w=800&q=80",
+            category: "Classic"
+          },
+          {
+            id: "3",
+            name: "Oatmeal Raisin Cookie",
+            description: "Hearty oatmeal cookies with plump raisins and cinnamon.",
+            price: 3.49,
+            image: "https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=800&q=80",
+            category: "Healthy"
+          },
+          {
+            id: "4",
+            name: "Double Chocolate Cookie",
+            description: "Rich double chocolate cookies for chocolate lovers.",
+            price: 4.49,
+            image: "https://images.unsplash.com/photo-1603133872878-684f208fb84b?w=800&q=80",
+            category: "Premium"
+          },
+          {
+            id: "5",
+            name: "Peanut Butter Cookie",
+            description: "Soft and chewy peanut butter cookies with a hint of vanilla.",
+            price: 3.79,
+            image: "https://images.unsplash.com/photo-1626645738196-c2a7c87a8f58?w=800&q=80",
+            category: "Classic"
+          },
+          {
+            id: "6",
+            name: "Snickerdoodle Cookie",
+            description: "Cinnamon sugar cookies with a soft, pillowy texture.",
+            price: 3.29,
+            image: "https://images.unsplash.com/photo-1551024506-0bccd828d307?w=800&q=80",
+            category: "Classic"
           }
-          
-          console.log("Final image URL:", image);
-          
-          return {
-            id: p.id,
-            name: p.name,
-            description: p.description ?? "",
-            price: typeof p.price === "string" ? parseFloat(p.price) : p.price,
-            image,
-            category: p.category ?? "classic",
-          };
-        });
-        setProducts(normalized);
+        ];
+        setProducts(mockProducts);
+        setIsLoading(false);
+        return;
       }
+
+      // Try to fetch from Supabase
+      try {
+        const { data, error } = await supabase
+          .from("Cookies")
+          .select("*")
+          .order("created_at", { ascending: false });
+
+        if (error) {
+          console.error("Supabase error:", error);
+          setError(`Database error: ${error.message}`);
+          setProducts([]);
+        } else {
+          console.log("Raw data from Supabase:", data);
+          console.log("Number of items:", data?.length || 0);
+          
+          // Cast price to number in case it's returned as string from numeric type
+          const normalized = (data || []).map((p: any) => {
+            let image = p.image ?? p.image_url ?? p.imageUrl ?? "";
+            
+            // Debug: log the original image value
+            console.log("Original image value:", image);
+            
+            // If image is a storage path (not a full URL), convert to public URL
+            if (image && !image.startsWith("http") && supabase) {
+              const { data: publicData } = supabase.storage
+                .from("Cookies")
+                .getPublicUrl(image);
+              image = publicData.publicUrl;
+              console.log("Converted to public URL:", image);
+            }
+            
+            console.log("Final image URL:", image);
+            
+            return {
+              id: p.id,
+              name: p.name,
+              description: p.description ?? "",
+              price: typeof p.price === "string" ? parseFloat(p.price) : p.price,
+              image,
+              category: p.category ?? "classic",
+            };
+          });
+          setProducts(normalized);
+        }
+      } catch (error) {
+        console.error("Error fetching products:", error);
+        setError("Failed to load products");
+        setProducts([]);
+      }
+      
       setIsLoading(false);
     };
 
