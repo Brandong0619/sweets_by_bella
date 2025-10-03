@@ -68,7 +68,7 @@ interface Order {
   customer_email: string;
   total_amount: number;
   order_type: 'delivery' | 'pickup';
-  status: 'pending' | 'confirmed' | 'preparing' | 'ready' | 'delivered' | 'cancelled';
+  status: string; // Allow any string from Supabase
   delivery_address?: {
     name: string;
     street: string;
@@ -663,14 +663,19 @@ const AdminDashboard = () => {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <h3 className="font-medium">Customer Information</h3>
-                      <p>{order.customerName}</p>
-                      <p>{order.email}</p>
-                      <p className="whitespace-pre-line">{order.address}</p>
+                      <p>{order.customer_name}</p>
+                      <p>{order.customer_email}</p>
+                      {order.delivery_address && (
+                        <p className="whitespace-pre-line">
+                          {order.delivery_address.street}<br />
+                          {order.delivery_address.city}, {order.delivery_address.state} {order.delivery_address.zipCode}
+                        </p>
+                      )}
                     </div>
                     <div>
                       <h3 className="font-medium">Order Summary</h3>
-                      <p>Date: {order.date}</p>
-                      <p>Total: ${order.total.toFixed(2)}</p>
+                      <p>Date: {new Date(order.created_at).toLocaleDateString()}</p>
+                      <p>Total: ${order.total_amount.toFixed(2)}</p>
                       <p>
                         Status:
                         <select
@@ -701,13 +706,13 @@ const AdminDashboard = () => {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {order.items.map((item, index) => (
+                        {order.order_items?.map((item, index) => (
                           <TableRow key={index}>
-                            <TableCell>{item.productName}</TableCell>
+                            <TableCell>{item.product_name}</TableCell>
                             <TableCell>{item.quantity}</TableCell>
-                            <TableCell>${item.price.toFixed(2)}</TableCell>
+                            <TableCell>${item.product_price.toFixed(2)}</TableCell>
                             <TableCell>
-                              ${(item.price * item.quantity).toFixed(2)}
+                              ${(item.product_price * item.quantity).toFixed(2)}
                             </TableCell>
                           </TableRow>
                         ))}
