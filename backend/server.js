@@ -1,7 +1,13 @@
 const express = require("express");
 const cors = require("cors");
 const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
+const { createClient } = require('@supabase/supabase-js');
 require("dotenv").config();
+
+// Initialize Supabase client
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const supabase = supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey) : null;
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -120,7 +126,74 @@ async function handleSuccessfulPayment(session) {
 
     console.log("Order data:", orderData);
 
-    // TODO: Save to database (Supabase)
+    // Save to Supabase if configured
+    if (supabase) {
+      try {
+        // Get line items from Stripe
+        const lineItems = await stripe.checkout.sessions.listLineItems(session.id, {
+          expand: ['data.price.product']
+        });
+
+        // Prepare order data for Supabase
+        const supabaseOrderData = {
+          stripe_session_id: session.id,
+          customer_email: session.customer_details?.email,
+          customer_name: session.customer_details?.name || metadata.delivery_name,
+          total_amount: session.amount_total / 100, // Convert from cents
+          order_type: metadata.order_type || 'pickup',
+          status: 'pending',
+          delivery_address: metadata.order_type === 'delivery' ? {
+            name: metadata.delivery_name,
+            phone: metadata.delivery_phone,
+            street: metadata.delivery_address?.split(',')[0],
+            city: metadata.delivery_address?.split(',')[1]?.trim(),
+            state: metadata.delivery_address?.split(',')[2]?.trim().split(' ')[0],
+            zipCode: metadata.delivery_address?.split(',')[2]?.trim().split(' ')[1]
+          } : null,
+          delivery_phone: metadata.delivery_phone,
+          delivery_instructions: metadata.delivery_instructions
+        };
+
+        console.log("Saving order to Supabase:", supabaseOrderData);
+
+        // Save order to Supabase
+        const { data: order, error: orderError } = await supabase
+          .from('orders')
+          .insert([supabaseOrderData])
+          .select()
+          .single();
+
+        if (orderError) {
+          console.error("Error saving order:", orderError);
+        } else {
+          console.log("Order saved successfully:", order.id);
+
+          // Save order items
+          const orderItems = lineItems.data.map(item => ({
+            order_id: order.id,
+            product_name: item.description,
+            product_price: item.price.unit_amount / 100,
+            quantity: item.quantity,
+            product_image: item.price.product.images?.[0] || ''
+          }));
+
+          const { error: itemsError } = await supabase
+            .from('order_items')
+            .insert(orderItems);
+
+          if (itemsError) {
+            console.error("Error saving order items:", itemsError);
+          } else {
+            console.log("Order items saved successfully");
+          }
+        }
+      } catch (dbError) {
+        console.error("Database error:", dbError);
+      }
+    } else {
+      console.log("Supabase not configured, skipping order save");
+    }
+
     // TODO: Send confirmation email
     // TODO: Notify admin
   } catch (error) {

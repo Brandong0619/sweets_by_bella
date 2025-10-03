@@ -46,7 +46,11 @@ import {
   Trash2,
   Package,
   ShoppingCart,
+  MapPin,
+  Phone,
+  Mail,
 } from "lucide-react";
+import { supabase } from "@/lib/supabaseClient";
 
 interface Product {
   id: string;
@@ -59,20 +63,32 @@ interface Product {
 
 interface Order {
   id: string;
-  customerName: string;
-  email: string;
-  address: string;
-  total: number;
-  status: string;
-  date: string;
-  items: OrderItem[];
+  stripe_session_id: string;
+  customer_name: string;
+  customer_email: string;
+  total_amount: number;
+  order_type: 'delivery' | 'pickup';
+  status: 'pending' | 'confirmed' | 'preparing' | 'ready' | 'delivered' | 'cancelled';
+  delivery_address?: {
+    name: string;
+    street: string;
+    city: string;
+    state: string;
+    zipCode: string;
+  };
+  delivery_phone?: string;
+  delivery_instructions?: string;
+  created_at: string;
+  updated_at: string;
+  order_items?: OrderItem[];
 }
 
 interface OrderItem {
-  productId: string;
-  productName: string;
+  id: string;
+  product_name: string;
+  product_price: number;
   quantity: number;
-  price: number;
+  product_image?: string;
 }
 
 const AdminDashboard = () => {
@@ -114,42 +130,45 @@ const AdminDashboard = () => {
   ]);
 
   // State for orders management
-  const [orders, setOrders] = useState<Order[]>([
-    {
-      id: "ord-001",
-      customerName: "John Smith",
-      email: "john@example.com",
-      address: "123 Main St, Anytown, USA",
-      total: 11.96,
-      status: "Completed",
-      date: "2023-06-15",
-      items: [
-        {
-          productId: "1",
-          productName: "Chocolate Chip Cookie",
-          quantity: 4,
-          price: 2.99,
-        },
-      ],
-    },
-    {
-      id: "ord-002",
-      customerName: "Sarah Johnson",
-      email: "sarah@example.com",
-      address: "456 Oak Ave, Somewhere, USA",
-      total: 13.96,
-      status: "Processing",
-      date: "2023-06-16",
-      items: [
-        {
-          productId: "2",
-          productName: "Double Chocolate Cookie",
-          quantity: 4,
-          price: 3.49,
-        },
-      ],
-    },
-  ]);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [ordersLoading, setOrdersLoading] = useState(true);
+
+  // Fetch orders from Supabase
+  useEffect(() => {
+    const fetchOrders = async () => {
+      if (!supabase) {
+        console.log("Supabase not available");
+        setOrdersLoading(false);
+        return;
+      }
+
+      try {
+        setOrdersLoading(true);
+        
+        // Fetch orders with their items
+        const { data: ordersData, error: ordersError } = await supabase
+          .from('orders')
+          .select(`
+            *,
+            order_items (*)
+          `)
+          .order('created_at', { ascending: false });
+
+        if (ordersError) {
+          console.error('Error fetching orders:', ordersError);
+        } else {
+          console.log('Orders fetched:', ordersData);
+          setOrders(ordersData || []);
+        }
+      } catch (error) {
+        console.error('Error fetching orders:', error);
+      } finally {
+        setOrdersLoading(false);
+      }
+    };
+
+    fetchOrders();
+  }, []);
 
   // State for product form
   const [newProduct, setNewProduct] = useState<Omit<Product, "id">>({
@@ -395,6 +414,7 @@ const AdminDashboard = () => {
                   <TableRow>
                     <TableHead>Order ID</TableHead>
                     <TableHead>Customer</TableHead>
+                    <TableHead>Type</TableHead>
                     <TableHead>Date</TableHead>
                     <TableHead>Total</TableHead>
                     <TableHead>Status</TableHead>
@@ -402,30 +422,77 @@ const AdminDashboard = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {orders.map((order) => (
-                    <TableRow key={order.id}>
-                      <TableCell className="font-medium">{order.id}</TableCell>
-                      <TableCell>{order.customerName}</TableCell>
-                      <TableCell>{order.date}</TableCell>
-                      <TableCell>${order.total.toFixed(2)}</TableCell>
-                      <TableCell>
-                        <span
-                          className={`px-2 py-1 rounded-full text-xs ${order.status === "Completed" ? "bg-green-100 text-green-800" : "bg-yellow-100 text-yellow-800"}`}
-                        >
-                          {order.status}
-                        </span>
-                      </TableCell>
-                      <TableCell>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => viewOrderDetails(order.id)}
-                        >
-                          View Details
-                        </Button>
+                  {ordersLoading ? (
+                    <TableRow>
+                      <TableCell colSpan={7} className="text-center py-8">
+                        <div className="flex items-center justify-center">
+                          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary mr-2"></div>
+                          Loading orders...
+                        </div>
                       </TableCell>
                     </TableRow>
-                  ))}
+                  ) : orders.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                        No orders found
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    orders.map((order) => (
+                      <TableRow key={order.id}>
+                        <TableCell className="font-medium">
+                          {order.stripe_session_id.slice(0, 20)}...
+                        </TableCell>
+                        <TableCell>
+                          <div>
+                            <div className="font-medium">{order.customer_name}</div>
+                            <div className="text-sm text-muted-foreground flex items-center">
+                              <Mail className="h-3 w-3 mr-1" />
+                              {order.customer_email}
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center">
+                            {order.order_type === 'delivery' ? (
+                              <>
+                                <MapPin className="h-4 w-4 mr-1 text-blue-500" />
+                                <span className="text-blue-600">Delivery</span>
+                              </>
+                            ) : (
+                              <span className="text-green-600">Pickup</span>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          {new Date(order.created_at).toLocaleDateString()}
+                        </TableCell>
+                        <TableCell>${order.total_amount.toFixed(2)}</TableCell>
+                        <TableCell>
+                          <span
+                            className={`px-2 py-1 rounded-full text-xs ${
+                              order.status === "delivered" 
+                                ? "bg-green-100 text-green-800" 
+                                : order.status === "cancelled"
+                                ? "bg-red-100 text-red-800"
+                                : "bg-yellow-100 text-yellow-800"
+                            }`}
+                          >
+                            {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+                          </span>
+                        </TableCell>
+                        <TableCell>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => viewOrderDetails(order.id)}
+                          >
+                            View Details
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
                 </TableBody>
               </Table>
             </CardContent>
