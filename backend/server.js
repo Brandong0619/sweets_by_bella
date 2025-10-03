@@ -69,7 +69,10 @@ app.post("/create-checkout-session", async (req, res) => {
       customer_email: deliveryInfo?.email || undefined,
     });
 
-    res.json({ sessionId: session.id });
+      res.json({ 
+        sessionId: session.id,
+        checkoutUrl: session.url 
+      });
   } catch (error) {
     console.error("Error creating checkout session:", error);
     res.status(500).json({ error: "Failed to create checkout session" });
