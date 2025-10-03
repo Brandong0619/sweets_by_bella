@@ -67,6 +67,15 @@ const CartPage = () => {
 
       const { sessionId, checkoutUrl } = await response.json();
       
+      // Store order details in localStorage as backup
+      const orderDetails = {
+        items: cartItems,
+        total: cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0),
+        deliveryInfo: needsDelivery ? deliveryAddress : null,
+        timestamp: new Date().toISOString()
+      };
+      localStorage.setItem('lastOrder', JSON.stringify(orderDetails));
+      
       // Redirect to Stripe checkout URL
       if (checkoutUrl) {
         window.location.href = checkoutUrl;

@@ -70,6 +70,17 @@ const SuccessPage = () => {
   const fetchSessionDetails = async (sessionId: string) => {
     try {
       console.log('Fetching session details for:', sessionId);
+      
+      // Try to get order details from localStorage first (as fallback)
+      const storedOrder = localStorage.getItem('lastOrder');
+      if (storedOrder) {
+        console.log('Found stored order, using as fallback');
+        const orderData = JSON.parse(storedOrder);
+        setOrderSummary(orderData);
+        setIsLoading(false);
+        return;
+      }
+      
       const response = await fetch(`https://sweets-by-bella-em82.vercel.app/session/${sessionId}`);
       
       if (response.ok) {
@@ -103,7 +114,7 @@ const SuccessPage = () => {
         console.log('Parsed items:', items);
         console.log('Session metadata:', sessionData.metadata);
         
-        setOrderSummary({
+        const orderSummary = {
           items,
           total: sessionData.amount_total ? sessionData.amount_total / 100 : 0,
           deliveryInfo: sessionData.metadata?.order_type === 'delivery' ? {
@@ -116,24 +127,26 @@ const SuccessPage = () => {
             specialInstructions: sessionData.metadata.delivery_instructions || ''
           } : null,
           timestamp: new Date().toISOString()
-        });
+        };
+        
+        setOrderSummary(orderSummary);
         setIsLoading(false);
       } else {
         console.error('Failed to fetch session details:', response.status, response.statusText);
-        // Set a fallback order summary
-        setOrderSummary({
-          items: [],
-          total: 0,
-          deliveryInfo: null,
-          timestamp: new Date().toISOString()
-        });
-        setIsLoading(false);
+        throw new Error('Failed to fetch session');
       }
     } catch (error) {
       console.error('Error fetching session details:', error);
-      // Set a fallback order summary
+      
+      // Show a success message even if we can't fetch details
       setOrderSummary({
-        items: [],
+        items: [{
+          id: 'success',
+          name: 'Payment Successful',
+          price: 0,
+          quantity: 1,
+          imageUrl: ''
+        }],
         total: 0,
         deliveryInfo: null,
         timestamp: new Date().toISOString()
