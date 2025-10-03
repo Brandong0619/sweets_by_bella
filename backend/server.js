@@ -154,7 +154,8 @@ async function handleSuccessfulPayment(session) {
           delivery_instructions: metadata.delivery_instructions
         };
 
-        console.log("Saving order to Supabase:", supabaseOrderData);
+        console.log("💾 Saving order to Supabase:", supabaseOrderData);
+        console.log("🔗 Supabase client configured:", !!supabase);
 
         // Save order to Supabase
         const { data: order, error: orderError } = await supabase
@@ -162,6 +163,8 @@ async function handleSuccessfulPayment(session) {
           .insert([supabaseOrderData])
           .select()
           .single();
+
+        console.log("📝 Supabase insert result:", { order, orderError });
 
         if (orderError) {
           console.error("Error saving order:", orderError);

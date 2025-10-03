@@ -136,14 +136,18 @@ const AdminDashboard = () => {
   // Fetch orders from Supabase
   useEffect(() => {
     const fetchOrders = async () => {
+      console.log("🔍 Starting to fetch orders...");
+      console.log("Supabase client:", supabase);
+      
       if (!supabase) {
-        console.log("Supabase not available");
+        console.log("❌ Supabase not available");
         setOrdersLoading(false);
         return;
       }
 
       try {
         setOrdersLoading(true);
+        console.log("📡 Fetching orders from Supabase...");
         
         // Fetch orders with their items
         const { data: ordersData, error: ordersError } = await supabase
@@ -154,16 +158,20 @@ const AdminDashboard = () => {
           `)
           .order('created_at', { ascending: false });
 
+        console.log("📊 Supabase response:", { ordersData, ordersError });
+
         if (ordersError) {
-          console.error('Error fetching orders:', ordersError);
+          console.error('❌ Error fetching orders:', ordersError);
         } else {
-          console.log('Orders fetched:', ordersData);
+          console.log('✅ Orders fetched successfully:', ordersData);
+          console.log('📈 Number of orders:', ordersData?.length || 0);
           setOrders(ordersData || []);
         }
       } catch (error) {
-        console.error('Error fetching orders:', error);
+        console.error('💥 Error fetching orders:', error);
       } finally {
         setOrdersLoading(false);
+        console.log("🏁 Finished fetching orders");
       }
     };
 
