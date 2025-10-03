@@ -11,8 +11,7 @@ app.use(
   cors({
     origin: [
       process.env.FRONTEND_URL,
-      "https://sweets-by-bella-pln9.vercel.app",
-      "https://sweets-by-bella-git-71185b-brandon-gonzalezs-projects-98996044.vercel.app"
+      /^https:\/\/sweets-by-bella.*\.vercel\.app$/
     ],
     credentials: true,
   })
