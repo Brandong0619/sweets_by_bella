@@ -35,6 +35,7 @@ const SuccessPage = () => {
   const { clear } = useCart();
   const [orderSummary, setOrderSummary] = useState<OrderSummary | null>(null);
   const [isDemo, setIsDemo] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const session = searchParams.get('session_id');
@@ -47,9 +48,19 @@ const SuccessPage = () => {
       if (storedOrder) {
         setOrderSummary(JSON.parse(storedOrder));
       }
+      setIsLoading(false);
     } else if (session) {
       // Real Stripe session - fetch session details
       fetchSessionDetails(session);
+    } else {
+      // No session or demo - show fallback
+      setOrderSummary({
+        items: [],
+        total: 0,
+        deliveryInfo: null,
+        timestamp: new Date().toISOString()
+      });
+      setIsLoading(false);
     }
     
     // Clear the cart after successful payment
@@ -58,12 +69,38 @@ const SuccessPage = () => {
 
   const fetchSessionDetails = async (sessionId: string) => {
     try {
+      console.log('Fetching session details for:', sessionId);
       const response = await fetch(`https://sweets-by-bella-em82.vercel.app/session/${sessionId}`);
+      
       if (response.ok) {
         const sessionData = await response.json();
+        console.log('Session data received:', sessionData);
+        
+        // Handle the case where line_items might be in a different format
+        let items = [];
+        if (sessionData.line_items && sessionData.line_items.data) {
+          // If line_items has a data property (expanded format)
+          items = sessionData.line_items.data.map((item: any) => ({
+            id: item.id,
+            name: item.description || 'Product',
+            price: item.price.unit_amount / 100,
+            quantity: item.quantity,
+            imageUrl: item.price.product.images?.[0] || ''
+          }));
+        } else if (Array.isArray(sessionData.line_items)) {
+          // If line_items is directly an array
+          items = sessionData.line_items.map((item: any) => ({
+            id: item.id || Math.random().toString(),
+            name: item.description || 'Product',
+            price: item.price?.unit_amount ? item.price.unit_amount / 100 : 0,
+            quantity: item.quantity || 1,
+            imageUrl: item.price?.product?.images?.[0] || ''
+          }));
+        }
+        
         setOrderSummary({
-          items: sessionData.line_items || [],
-          total: sessionData.amount_total / 100, // Convert from cents
+          items,
+          total: sessionData.amount_total ? sessionData.amount_total / 100 : 0,
           deliveryInfo: sessionData.metadata?.order_type === 'delivery' ? {
             name: sessionData.metadata.delivery_name || '',
             phone: sessionData.metadata.delivery_phone || '',
@@ -75,11 +112,41 @@ const SuccessPage = () => {
           } : null,
           timestamp: new Date().toISOString()
         });
+        setIsLoading(false);
+      } else {
+        console.error('Failed to fetch session details:', response.status, response.statusText);
+        // Set a fallback order summary
+        setOrderSummary({
+          items: [],
+          total: 0,
+          deliveryInfo: null,
+          timestamp: new Date().toISOString()
+        });
+        setIsLoading(false);
       }
     } catch (error) {
       console.error('Error fetching session details:', error);
+      // Set a fallback order summary
+      setOrderSummary({
+        items: [],
+        total: 0,
+        deliveryInfo: null,
+        timestamp: new Date().toISOString()
+      });
+      setIsLoading(false);
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background p-4 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading order details...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background p-4">
