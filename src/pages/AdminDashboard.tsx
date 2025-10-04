@@ -126,6 +126,15 @@ const AdminDashboard = () => {
         setOrdersLoading(true);
         console.log("📡 Fetching orders from Supabase...");
         
+        // Test basic Supabase connection first
+        console.log("🧪 Testing Supabase connection...");
+        const { data: testData, error: testError } = await supabase
+          .from('orders')
+          .select('count')
+          .limit(1);
+        
+        console.log("🧪 Test query result:", { testData, testError });
+        
         // Fetch orders with their items
         const { data: ordersData, error: ordersError } = await supabase
           .from('orders')
