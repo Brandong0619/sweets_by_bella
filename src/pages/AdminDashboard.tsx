@@ -325,11 +325,6 @@ const AdminDashboard = () => {
                 Login
               </Button>
             </form>
-            <div className="mt-4 p-3 text-xs text-gray-500 bg-gray-50 rounded-md">
-              <p><strong>Demo Credentials:</strong></p>
-              <p>Username: bella | Password: sweets2024</p>
-              <p>Username: admin | Password: sweets2024</p>
-            </div>
           </CardContent>
         </Card>
       </div>
