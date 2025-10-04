@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { ShoppingCart, User } from "lucide-react";
@@ -6,6 +6,7 @@ import { useCart } from "@/context/CartContext";
 import { Button } from "./ui/button";
 import { Card, CardContent } from "./ui/card";
 import ProductCard from "./ProductCard";
+import { supabase } from "@/lib/supabaseClient";
 
 interface Product {
   id: string;
@@ -17,42 +18,96 @@ interface Product {
 
 const HomePage = () => {
   const { totalItems } = useCart();
-  // Mock featured products data - would be fetched from API in a real implementation
-  const featuredProducts: Product[] = [
-    {
-      id: "1",
-      name: "Chocolate Chip Cookie",
-      description:
-        "Classic chocolate chip cookies made with premium chocolate.",
-      price: 3.99,
-      image:
-        "https://images.unsplash.com/photo-1499636136210-6f4ee915583e?w=800&q=80",
-    },
-    {
-      id: "2",
-      name: "Double Chocolate Cookie",
-      description: "Rich chocolate cookies with chocolate chunks.",
-      price: 4.49,
-      image:
-        "https://images.unsplash.com/photo-1618923850107-d1a234d7a73a?w=800&q=80",
-    },
-    {
-      id: "3",
-      name: "Oatmeal Raisin Cookie",
-      description: "Hearty oatmeal cookies with plump raisins.",
-      price: 3.79,
-      image:
-        "https://images.unsplash.com/photo-1590080875515-8a3a8dc5735e?w=800&q=80",
-    },
-    {
-      id: "4",
-      name: "Sugar Cookie",
-      description: "Simple and sweet classic sugar cookies.",
-      price: 3.49,
-      image:
-        "https://images.unsplash.com/photo-1621236378699-8597faf6a176?w=800&q=80",
-    },
-  ];
+  const [featuredProducts, setFeaturedProducts] = useState<Product[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Fetch featured products from Supabase
+  useEffect(() => {
+    const fetchFeaturedProducts = async () => {
+      try {
+        setIsLoading(true);
+        
+        // If Supabase is not available, use mock data
+        if (!supabase) {
+          console.log("Supabase not available, using mock data");
+          const mockProducts: Product[] = [
+            {
+              id: "1",
+              name: "Chocolate Chip Cookie",
+              description: "Classic chocolate chip cookies made with premium chocolate.",
+              price: 3.99,
+              image: "https://images.unsplash.com/photo-1499636136210-6f4ee915583e?w=800&q=80",
+            },
+            {
+              id: "2",
+              name: "Double Chocolate Cookie",
+              description: "Rich chocolate cookies with chocolate chunks.",
+              price: 4.49,
+              image: "https://images.unsplash.com/photo-1618923850107-d1a234d7a73a?w=800&q=80",
+            },
+            {
+              id: "3",
+              name: "Oatmeal Raisin Cookie",
+              description: "Hearty oatmeal cookies with plump raisins.",
+              price: 3.79,
+              image: "https://images.unsplash.com/photo-1590080875515-8a3a8dc5735e?w=800&q=80",
+            },
+            {
+              id: "4",
+              name: "Sugar Cookie",
+              description: "Simple and sweet classic sugar cookies.",
+              price: 3.49,
+              image: "https://images.unsplash.com/photo-1621236378699-8597faf6a176?w=800&q=80",
+            },
+          ];
+          setFeaturedProducts(mockProducts);
+          setIsLoading(false);
+          return;
+        }
+
+        // Fetch from Supabase - get first 4 products as featured
+        const { data, error } = await supabase
+          .from("Cookies")
+          .select("*")
+          .limit(4)
+          .order("created_at", { ascending: false });
+
+        if (error) {
+          console.error("Error fetching featured products:", error);
+          setFeaturedProducts([]);
+        } else {
+          // Convert Supabase data to our Product format
+          const products = (data || []).map((p: any) => {
+            let image = p.image ?? p.image_url ?? p.imageUrl ?? "";
+            
+            // If image is a storage path (not a full URL), convert to public URL
+            if (image && !image.startsWith("http") && supabase) {
+              const { data: publicData } = supabase.storage
+                .from("Cookies")
+                .getPublicUrl(image);
+              image = publicData.publicUrl;
+            }
+            
+            return {
+              id: p.id,
+              name: p.name,
+              description: p.description ?? "",
+              price: typeof p.price === "string" ? parseFloat(p.price) : p.price,
+              image,
+            };
+          });
+          setFeaturedProducts(products);
+        }
+      } catch (error) {
+        console.error("Error fetching featured products:", error);
+        setFeaturedProducts([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchFeaturedProducts();
+  }, []);
 
   return (
     <div className="min-h-screen bg-background">
@@ -157,16 +212,34 @@ const HomePage = () => {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
-            {featuredProducts.map((product) => (
-              <ProductCard
-                key={product.id}
-                id={product.id}
-                name={product.name}
-                description={product.description}
-                price={product.price}
-                imageUrl={product.image}
-              />
-            ))}
+            {isLoading ? (
+              // Loading skeleton
+              Array.from({ length: 4 }).map((_, index) => (
+                <Card key={index} className="animate-pulse">
+                  <CardContent className="p-4">
+                    <div className="w-full h-48 bg-gray-200 rounded mb-4"></div>
+                    <div className="h-4 bg-gray-200 rounded mb-2"></div>
+                    <div className="h-3 bg-gray-200 rounded mb-2"></div>
+                    <div className="h-6 bg-gray-200 rounded w-1/3"></div>
+                  </CardContent>
+                </Card>
+              ))
+            ) : featuredProducts.length > 0 ? (
+              featuredProducts.map((product) => (
+                <ProductCard
+                  key={product.id}
+                  id={product.id}
+                  name={product.name}
+                  description={product.description}
+                  price={product.price}
+                  imageUrl={product.image}
+                />
+              ))
+            ) : (
+              <div className="col-span-full text-center py-8">
+                <p className="text-muted-foreground">No products available yet.</p>
+              </div>
+            )}
           </div>
 
           <div className="text-center mt-12">

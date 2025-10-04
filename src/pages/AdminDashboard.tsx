@@ -77,40 +77,60 @@ const AdminDashboard = () => {
   const [loginError, setLoginError] = useState("");
 
   // State for products management
-  const [products, setProducts] = useState<Product[]>([
-    {
-      id: "1",
-      name: "Chocolate Chip Cookie",
-      description:
-        "Classic chocolate chip cookies made with premium chocolate.",
-      price: 2.99,
-      image:
-        "https://images.unsplash.com/photo-1499636136210-6f4ee915583e?w=400&q=80",
-      stock: 24,
-    },
-    {
-      id: "2",
-      name: "Double Chocolate Cookie",
-      description: "Rich chocolate cookies with chocolate chunks.",
-      price: 3.49,
-      image:
-        "https://images.unsplash.com/photo-1618923850107-d1a234d7a73a?w=400&q=80",
-      stock: 18,
-    },
-    {
-      id: "3",
-      name: "Oatmeal Raisin Cookie",
-      description: "Hearty oatmeal cookies with plump raisins.",
-      price: 2.79,
-      image:
-        "https://images.unsplash.com/photo-1590080875515-8a3a8dc5735e?w=400&q=80",
-      stock: 12,
-    },
-  ]);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [productsLoading, setProductsLoading] = useState(true);
 
   // State for orders management
   const [orders, setOrders] = useState<Order[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(true);
+
+  // Fetch products from Supabase
+  useEffect(() => {
+    const fetchProducts = async () => {
+      console.log("🔍 Starting to fetch products...");
+      
+      if (!supabase) {
+        console.log("❌ Supabase not available for products");
+        setProductsLoading(false);
+        return;
+      }
+
+      try {
+        setProductsLoading(true);
+        console.log("📡 Fetching products from Supabase...");
+        
+        const { data: productsData, error: productsError } = await supabase
+          .from('Cookies')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        console.log("📊 Products response:", { productsData, productsError });
+
+        if (productsError) {
+          console.error('❌ Error fetching products:', productsError);
+        } else {
+          console.log('✅ Products fetched successfully:', productsData);
+          // Convert Supabase data to our Product format
+          const convertedProducts = (productsData || []).map((p: any) => ({
+            id: p.id,
+            name: p.name,
+            description: p.description || '',
+            price: typeof p.price === 'string' ? parseFloat(p.price) : p.price,
+            image: p.image || '',
+            stock: 0 // Default stock since we don't have this field yet
+          }));
+          setProducts(convertedProducts);
+        }
+      } catch (error) {
+        console.error('💥 Error fetching products:', error);
+      } finally {
+        setProductsLoading(false);
+        console.log("🏁 Finished fetching products");
+      }
+    };
+
+    fetchProducts();
+  }, []);
 
   // Fetch orders from Supabase
   useEffect(() => {
@@ -235,20 +255,70 @@ const AdminDashboard = () => {
     }
   };
 
-  const handleProductSubmit = () => {
-    if (editingProduct) {
-      // Update existing product
-      setProducts(
-        products.map((p) => (p.id === editingProduct.id ? editingProduct : p)),
-      );
-    } else {
-      // Add new product
-      const newId = `${products.length + 1}`;
-      setProducts([...products, { id: newId, ...newProduct }]);
+  const handleProductSubmit = async () => {
+    try {
+      if (editingProduct) {
+        // Update existing product in Supabase
+        if (supabase) {
+          const { error } = await supabase
+            .from('Cookies')
+            .update({
+              name: editingProduct.name,
+              description: editingProduct.description,
+              price: editingProduct.price,
+              image: editingProduct.image,
+              category: 'classic' // Default category
+            })
+            .eq('id', editingProduct.id);
+
+          if (error) {
+            console.error('Error updating product:', error);
+            alert('Failed to update product. Please try again.');
+            return;
+          }
+        }
+        
+        // Update local state
+        setProducts(
+          products.map((p) => (p.id === editingProduct.id ? editingProduct : p)),
+        );
+      } else {
+        // Add new product to Supabase
+        if (supabase) {
+          const { data, error } = await supabase
+            .from('Cookies')
+            .insert([{
+              name: newProduct.name,
+              description: newProduct.description,
+              price: newProduct.price,
+              image: newProduct.image,
+              category: 'classic' // Default category
+            }])
+            .select()
+            .single();
+
+          if (error) {
+            console.error('Error adding product:', error);
+            alert('Failed to add product. Please try again.');
+            return;
+          }
+
+          // Add to local state with the ID from Supabase
+          setProducts([...products, { id: data.id, ...newProduct }]);
+        } else {
+          // Fallback for when Supabase is not available
+          const newId = `${products.length + 1}`;
+          setProducts([...products, { id: newId, ...newProduct }]);
+        }
+      }
+      
+      setIsProductDialogOpen(false);
+      setEditingProduct(null);
+      setNewProduct({ name: "", description: "", price: 0, image: "", stock: 0 });
+    } catch (error) {
+      console.error('Error submitting product:', error);
+      alert('An error occurred. Please try again.');
     }
-    setIsProductDialogOpen(false);
-    setEditingProduct(null);
-    setNewProduct({ name: "", description: "", price: 0, image: "", stock: 0 });
   };
 
   const handleEditProduct = (product: Product) => {
@@ -261,11 +331,31 @@ const AdminDashboard = () => {
     setIsDeleteDialogOpen(true);
   };
 
-  const confirmDeleteProduct = () => {
+  const confirmDeleteProduct = async () => {
     if (productToDelete) {
-      setProducts(products.filter((p) => p.id !== productToDelete));
-      setIsDeleteDialogOpen(false);
-      setProductToDelete(null);
+      try {
+        // Delete from Supabase
+        if (supabase) {
+          const { error } = await supabase
+            .from('Cookies')
+            .delete()
+            .eq('id', productToDelete);
+
+          if (error) {
+            console.error('Error deleting product:', error);
+            alert('Failed to delete product. Please try again.');
+            return;
+          }
+        }
+        
+        // Remove from local state
+        setProducts(products.filter((p) => p.id !== productToDelete));
+        setIsDeleteDialogOpen(false);
+        setProductToDelete(null);
+      } catch (error) {
+        console.error('Error deleting product:', error);
+        alert('An error occurred. Please try again.');
+      }
     }
   };
 
@@ -395,43 +485,60 @@ const AdminDashboard = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {products.map((product) => (
-                    <TableRow key={product.id}>
-                      <TableCell>
-                        <img
-                          src={product.image}
-                          alt={product.name}
-                          className="w-16 h-16 object-cover rounded-md"
-                        />
-                      </TableCell>
-                      <TableCell className="font-medium">
-                        {product.name}
-                      </TableCell>
-                      <TableCell className="max-w-xs truncate">
-                        {product.description}
-                      </TableCell>
-                      <TableCell>${product.price.toFixed(2)}</TableCell>
-                      <TableCell>{product.stock}</TableCell>
-                      <TableCell>
-                        <div className="flex space-x-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleEditProduct(product)}
-                          >
-                            <Pencil size={16} />
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleDeleteProduct(product.id)}
-                          >
-                            <Trash2 size={16} />
-                          </Button>
+                  {productsLoading ? (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center py-8">
+                        <div className="flex items-center justify-center">
+                          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary mr-2"></div>
+                          Loading products...
                         </div>
                       </TableCell>
                     </TableRow>
-                  ))}
+                  ) : products.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                        No products found. Add your first product!
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    products.map((product) => (
+                      <TableRow key={product.id}>
+                        <TableCell>
+                          <img
+                            src={product.image}
+                            alt={product.name}
+                            className="w-16 h-16 object-cover rounded-md"
+                          />
+                        </TableCell>
+                        <TableCell className="font-medium">
+                          {product.name}
+                        </TableCell>
+                        <TableCell className="max-w-xs truncate">
+                          {product.description}
+                        </TableCell>
+                        <TableCell>${product.price.toFixed(2)}</TableCell>
+                        <TableCell>{product.stock}</TableCell>
+                        <TableCell>
+                          <div className="flex space-x-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleEditProduct(product)}
+                            >
+                              <Pencil size={16} />
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleDeleteProduct(product.id)}
+                            >
+                              <Trash2 size={16} />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
                 </TableBody>
               </Table>
             </CardContent>
