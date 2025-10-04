@@ -49,6 +49,7 @@ import {
   MapPin,
   Phone,
   Mail,
+  LogOut,
 } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 import type { Database } from "@/types/supabase";
@@ -70,9 +71,10 @@ type OrderItem = Database['public']['Tables']['order_items']['Row'];
 
 const AdminDashboard = () => {
   // State for authentication
-  const [isAuthenticated, setIsAuthenticated] = useState(true); // Default to true for UI scaffolding
+  const [isAuthenticated, setIsAuthenticated] = useState(false); // Start with false - requires login
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [loginError, setLoginError] = useState("");
 
   // State for products management
   const [products, setProducts] = useState<Product[]>([
@@ -181,8 +183,36 @@ const AdminDashboard = () => {
   // Login handler
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    // In a real app, this would validate credentials against a backend
-    setIsAuthenticated(true);
+    setLoginError("");
+    
+    // Check credentials - you can change these to whatever you want
+    if (username === "bella" && password === "sweets2024") {
+      setIsAuthenticated(true);
+      // Store auth state in localStorage so it persists
+      localStorage.setItem("adminAuth", "true");
+    } else if (username === "admin" && password === "sweets2024") {
+      setIsAuthenticated(true);
+      localStorage.setItem("adminAuth", "true");
+    } else {
+      setLoginError("Invalid username or password");
+    }
+  };
+
+  // Check if already authenticated on component mount
+  useEffect(() => {
+    const authState = localStorage.getItem("adminAuth");
+    if (authState === "true") {
+      setIsAuthenticated(true);
+    }
+  }, []);
+
+  // Logout handler
+  const handleLogout = () => {
+    setIsAuthenticated(false);
+    localStorage.removeItem("adminAuth");
+    setUsername("");
+    setPassword("");
+    setLoginError("");
   };
 
   // Product form handlers
@@ -265,12 +295,18 @@ const AdminDashboard = () => {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleLogin} className="space-y-4">
+              {loginError && (
+                <div className="p-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-md">
+                  {loginError}
+                </div>
+              )}
               <div className="space-y-2">
                 <Label htmlFor="username">Username</Label>
                 <Input
                   id="username"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
+                  placeholder="Enter username"
                   required
                 />
               </div>
@@ -281,6 +317,7 @@ const AdminDashboard = () => {
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Enter password"
                   required
                 />
               </div>
@@ -288,6 +325,11 @@ const AdminDashboard = () => {
                 Login
               </Button>
             </form>
+            <div className="mt-4 p-3 text-xs text-gray-500 bg-gray-50 rounded-md">
+              <p><strong>Demo Credentials:</strong></p>
+              <p>Username: bella | Password: sweets2024</p>
+              <p>Username: admin | Password: sweets2024</p>
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -297,7 +339,13 @@ const AdminDashboard = () => {
   // Admin dashboard UI
   return (
     <div className="container mx-auto py-8 bg-background">
-      <h1 className="text-3xl font-bold mb-6">Admin Dashboard</h1>
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-3xl font-bold">Admin Dashboard</h1>
+        <Button variant="outline" onClick={handleLogout} className="flex items-center gap-2">
+          <LogOut size={16} />
+          Logout
+        </Button>
+      </div>
 
       <Tabs defaultValue="products">
         <TabsList className="mb-4">
