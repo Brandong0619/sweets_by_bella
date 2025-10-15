@@ -20,7 +20,7 @@ interface DeliveryAddress {
 
 const CheckoutPage = () => {
   const navigate = useNavigate();
-  const { items, clearCart } = useCart();
+  const { items, clear } = useCart();
   const [orderType, setOrderType] = useState<"pickup" | "delivery">("pickup");
   const [paymentMethod, setPaymentMethod] = useState<"zelle" | "cashapp">("zelle");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -121,7 +121,7 @@ const CheckoutPage = () => {
         }));
         
         // Clear cart
-        clearCart();
+        clear();
         
         // Navigate to payment instructions
         navigate(`/payment-instructions/${result.order_reference}`);
