@@ -43,7 +43,7 @@ const PaymentInstructionsPage = () => {
       instructions: "Send payment via Zelle app or your bank's Zelle feature"
     },
     cashapp: {
-      cashtag: "$FlawlessCreations", // Replace with actual Cash App tag
+      cashtag: "$Actuallybellaa", // Replace with actual Cash App tag
       instructions: "Send payment via Cash App using the $cashtag"
     }
   };

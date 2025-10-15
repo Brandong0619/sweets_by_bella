@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Trash2, Plus, Minus, ShoppingBag, MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,6 +12,7 @@ import { useCart } from "@/context/CartContext";
 import { stripePromise } from "@/lib/stripe";
 
 const CartPage = () => {
+  const navigate = useNavigate();
   const { items: cartItems, updateQuantity, removeItem, subtotal } = useCart();
   
   // Delivery address state
@@ -52,7 +53,7 @@ const CartPage = () => {
     const cartData = {
       orderType: needsDelivery ? 'delivery' : 'pickup',
       deliveryAddress: needsDelivery ? deliveryAddress : null,
-      deliveryInstructions,
+      deliveryInstructions: deliveryAddress.specialInstructions,
       items: cartItems,
       total: cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0)
     };
