@@ -5,6 +5,9 @@ import ShopPage from "./pages/ShopPage";
 import AboutPage from "./pages/AboutPage";
 import ContactPage from "./pages/ContactPage";
 import CartPage from "./pages/CartPage";
+import CheckoutPage from "./pages/CheckoutPage";
+import PaymentInstructionsPage from "./pages/PaymentInstructionsPage";
+import OrderStatusPage from "./pages/OrderStatusPage";
 import SuccessPage from "./pages/SuccessPage";
 import AdminDashboard from "./pages/AdminDashboard";
 // import routes from "tempo-routes";
@@ -19,6 +22,9 @@ function App() {
           <Route path="/about" element={<AboutPage />} />
           <Route path="/contact" element={<ContactPage />} />
           <Route path="/cart" element={<CartPage />} />
+          <Route path="/checkout" element={<CheckoutPage />} />
+          <Route path="/payment-instructions/:orderReference" element={<PaymentInstructionsPage />} />
+          <Route path="/order-status/:orderId" element={<OrderStatusPage />} />
           <Route path="/success" element={<SuccessPage />} />
           <Route path="/admin" element={<AdminDashboard />} />
         </Routes>

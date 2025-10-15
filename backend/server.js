@@ -30,6 +30,217 @@ app.get("/", (req, res) => {
   res.json({ message: "Sweets by Bella Backend API" });
 });
 
+// Create order endpoint for Zelle/Cash App payments
+app.post("/create-order", async (req, res) => {
+  try {
+    const {
+      customer_name,
+      customer_email,
+      customer_phone,
+      payment_method,
+      order_type,
+      total_amount,
+      delivery_address,
+      delivery_instructions,
+      items,
+      expires_at
+    } = req.body;
+
+    // Generate order reference
+    const order_reference = `ORDER-${Date.now()}`;
+
+    if (!supabase) {
+      return res.status(500).json({ error: "Database not configured" });
+    }
+
+    // Create order in Supabase
+    const { data: order, error: orderError } = await supabase
+      .from('orders')
+      .insert([{
+        stripe_session_id: order_reference, // Using order_reference as session_id for compatibility
+        customer_name,
+        customer_email,
+        customer_phone,
+        total_amount,
+        order_type,
+        status: 'pending',
+        delivery_address,
+        delivery_instructions,
+        payment_method,
+        payment_status: 'pending',
+        order_reference,
+        expires_at
+      }])
+      .select()
+      .single();
+
+    if (orderError) {
+      console.error("Error creating order:", orderError);
+      return res.status(500).json({ error: "Failed to create order" });
+    }
+
+    // Create order items
+    const orderItems = items.map(item => ({
+      order_id: order.id,
+      product_name: item.name,
+      product_price: item.price,
+      quantity: item.quantity,
+      product_image: item.image
+    }));
+
+    const { error: itemsError } = await supabase
+      .from('order_items')
+      .insert(orderItems);
+
+    if (itemsError) {
+      console.error("Error creating order items:", itemsError);
+      // Order was created but items failed - we'll still return success
+    }
+
+    res.json({
+      success: true,
+      order_id: order.id,
+      order_reference,
+      message: "Order created successfully"
+    });
+
+  } catch (error) {
+    console.error("Error in create-order:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Update payment status endpoint
+app.post("/update-payment-status", async (req, res) => {
+  try {
+    const { order_reference, payment_status, status } = req.body;
+
+    if (!supabase) {
+      return res.status(500).json({ error: "Database not configured" });
+    }
+
+    const updateData = {};
+    if (payment_status) updateData.payment_status = payment_status;
+    if (status) updateData.status = status;
+    updateData.updated_at = new Date().toISOString();
+
+    const { data, error } = await supabase
+      .from('orders')
+      .update(updateData)
+      .eq('order_reference', order_reference)
+      .select()
+      .single();
+
+    if (error) {
+      console.error("Error updating payment status:", error);
+      return res.status(500).json({ error: "Failed to update payment status" });
+    }
+
+    res.json({
+      success: true,
+      order: data,
+      message: "Payment status updated successfully"
+    });
+
+  } catch (error) {
+    console.error("Error in update-payment-status:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Get order by reference
+app.get("/order/:orderReference", async (req, res) => {
+  try {
+    const { orderReference } = req.params;
+
+    if (!supabase) {
+      return res.status(500).json({ error: "Database not configured" });
+    }
+
+    const { data: order, error } = await supabase
+      .from('orders')
+      .select(`
+        *,
+        order_items (*)
+      `)
+      .eq('order_reference', orderReference)
+      .single();
+
+    if (error) {
+      console.error("Error fetching order:", error);
+      return res.status(404).json({ error: "Order not found" });
+    }
+
+    res.json({
+      success: true,
+      order
+    });
+
+  } catch (error) {
+    console.error("Error in get-order:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Auto-cancel expired orders endpoint (to be called by cron job)
+app.post("/cancel-expired-orders", async (req, res) => {
+  try {
+    if (!supabase) {
+      return res.status(500).json({ error: "Database not configured" });
+    }
+
+    const now = new Date().toISOString();
+    
+    // Find expired orders
+    const { data: expiredOrders, error: fetchError } = await supabase
+      .from('orders')
+      .select('id, order_reference, customer_email, customer_name')
+      .eq('payment_status', 'pending')
+      .lt('expires_at', now);
+
+    if (fetchError) {
+      console.error("Error fetching expired orders:", fetchError);
+      return res.status(500).json({ error: "Failed to fetch expired orders" });
+    }
+
+    if (expiredOrders.length === 0) {
+      return res.json({
+        success: true,
+        message: "No expired orders found",
+        cancelled_count: 0
+      });
+    }
+
+    // Update expired orders
+    const { error: updateError } = await supabase
+      .from('orders')
+      .update({
+        payment_status: 'expired',
+        status: 'cancelled',
+        updated_at: now
+      })
+      .in('id', expiredOrders.map(order => order.id));
+
+    if (updateError) {
+      console.error("Error updating expired orders:", updateError);
+      return res.status(500).json({ error: "Failed to update expired orders" });
+    }
+
+    console.log(`Cancelled ${expiredOrders.length} expired orders`);
+
+    res.json({
+      success: true,
+      message: `${expiredOrders.length} expired orders cancelled`,
+      cancelled_count: expiredOrders.length,
+      cancelled_orders: expiredOrders
+    });
+
+  } catch (error) {
+    console.error("Error in cancel-expired-orders:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 // Create checkout session
 app.post("/create-checkout-session", async (req, res) => {
   try {

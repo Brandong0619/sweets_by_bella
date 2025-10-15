@@ -522,7 +522,7 @@ const ShopPage = () => {
                 Contact: bella@sweetsbybella.com
               </p>
               <p className="text-sm text-muted-foreground">
-                © 2023 Sweets by Bella. All rights reserved.
+                © 2025 Sweets by Bella. All rights reserved.
               </p>
             </div>
           </div>

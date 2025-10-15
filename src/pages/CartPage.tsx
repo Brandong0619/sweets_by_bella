@@ -30,8 +30,8 @@ const CartPage = () => {
   const computedSubtotal = subtotal;
   const total = computedSubtotal; // No tax or shipping
 
-  // Handle checkout
-  const handleCheckout = async () => {
+  // Handle checkout - redirect to new checkout page
+  const handleCheckout = () => {
     if (cartItems.length === 0) {
       alert('Your cart is empty!');
       return;
@@ -48,45 +48,18 @@ const CartPage = () => {
       }
     }
 
-    try {
-      // Call backend to create Stripe checkout session
-        const response = await fetch('https://sweets-by-bella-em82.vercel.app/create-checkout-session', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          items: cartItems,
-          deliveryInfo: needsDelivery ? deliveryAddress : null,
-        }),
-      });
+    // Store cart data for checkout page
+    const cartData = {
+      orderType: needsDelivery ? 'delivery' : 'pickup',
+      deliveryAddress: needsDelivery ? deliveryAddress : null,
+      deliveryInstructions,
+      items: cartItems,
+      total: cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0)
+    };
+    localStorage.setItem('cartData', JSON.stringify(cartData));
 
-      if (!response.ok) {
-        throw new Error('Failed to create checkout session');
-      }
-
-      const { sessionId, checkoutUrl } = await response.json();
-      
-      // Store order details in localStorage as backup
-      const orderDetails = {
-        items: cartItems,
-        total: cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0),
-        deliveryInfo: needsDelivery ? deliveryAddress : null,
-        timestamp: new Date().toISOString()
-      };
-      localStorage.setItem('lastOrder', JSON.stringify(orderDetails));
-      
-      // Redirect to Stripe checkout URL
-      if (checkoutUrl) {
-        window.location.href = checkoutUrl;
-      } else {
-        throw new Error('No checkout URL received');
-      }
-      
-    } catch (error) {
-      console.error('Checkout error:', error);
-      alert('Checkout failed. Please try again.');
-    }
+    // Navigate to checkout page
+    navigate('/checkout');
   };
 
   // Handle quantity changes

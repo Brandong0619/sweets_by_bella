@@ -54,6 +54,11 @@ export type Database = {
           delivery_address: Json | null;
           delivery_phone: string | null;
           delivery_instructions: string | null;
+          payment_method: string | null;
+          payment_status: string | null;
+          order_reference: string | null;
+          expires_at: string | null;
+          customer_phone: string | null;
           created_at: string | null;
           updated_at: string | null;
         };
@@ -68,6 +73,11 @@ export type Database = {
           delivery_address?: Json | null;
           delivery_phone?: string | null;
           delivery_instructions?: string | null;
+          payment_method?: string | null;
+          payment_status?: string | null;
+          order_reference?: string | null;
+          expires_at?: string | null;
+          customer_phone?: string | null;
           created_at?: string | null;
           updated_at?: string | null;
         };
@@ -82,6 +92,11 @@ export type Database = {
           delivery_address?: Json | null;
           delivery_phone?: string | null;
           delivery_instructions?: string | null;
+          payment_method?: string | null;
+          payment_status?: string | null;
+          order_reference?: string | null;
+          expires_at?: string | null;
+          customer_phone?: string | null;
           created_at?: string | null;
           updated_at?: string | null;
         };
