@@ -78,6 +78,7 @@ const CheckoutPage = () => {
 
     try {
       // Create order data
+      const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
       const orderData = {
         customer_name: customerName,
         customer_email: customerEmail,
@@ -94,8 +95,14 @@ const CheckoutPage = () => {
           quantity: item.quantity,
           image: item.imageUrl
         })),
-        expires_at: new Date(Date.now() + 5 * 60 * 1000).toISOString(), // 5 minutes from now
+        expires_at: expiresAt.toISOString(), // 5 minutes from now
       };
+
+      console.log("Creating order with expiration:", {
+        now: new Date().toISOString(),
+        expires_at: expiresAt.toISOString(),
+        expiresInMinutes: 5
+      });
 
       // Call backend to create order
       const response = await fetch('https://sweets-by-bella-em82.vercel.app/create-order', {

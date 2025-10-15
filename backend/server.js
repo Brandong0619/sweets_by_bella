@@ -183,6 +183,7 @@ app.get("/order/:orderReference", async (req, res) => {
 });
 
 // Auto-cancel expired orders endpoint (to be called by cron job)
+// NOTE: This endpoint should only be called by a scheduled cron job, not manually
 app.post("/cancel-expired-orders", async (req, res) => {
   try {
     if (!supabase) {

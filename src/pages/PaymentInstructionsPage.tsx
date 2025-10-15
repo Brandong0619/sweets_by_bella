@@ -60,10 +60,20 @@ const PaymentInstructionsPage = () => {
       const now = new Date();
       const diff = expiresAt.getTime() - now.getTime();
       
+      console.log("Order expiration debug:", {
+        expires_at: order.expires_at,
+        expiresAt: expiresAt.toISOString(),
+        now: now.toISOString(),
+        diff: diff,
+        diffMinutes: diff / (1000 * 60)
+      });
+      
       if (diff <= 0) {
+        console.log("Order already expired");
         setIsExpired(true);
         setTimeLeft(0);
       } else {
+        console.log("Order still valid, time left:", Math.floor(diff / 1000), "seconds");
         setTimeLeft(Math.floor(diff / 1000));
       }
     } else {
