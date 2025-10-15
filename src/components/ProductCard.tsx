@@ -31,11 +31,30 @@ const ProductCard = ({
   
   const isSoldOut = stock !== undefined && stock === 0;
   const isLowStock = stock !== undefined && stock > 0 && stock <= 5;
+  const maxQuantity = stock !== undefined ? stock : 99;
 
-  const increment = () => setLocalQty((q) => Math.min(99, q + 1));
+  const increment = () => {
+    setLocalQty((q) => {
+      const newQty = q + 1;
+      if (stock !== undefined && newQty > stock) {
+        // Show alert if trying to exceed stock
+        alert(`Only ${stock} available in stock!`);
+        return q; // Don't increment
+      }
+      return Math.min(maxQuantity, newQty);
+    });
+  };
+  
   const decrement = () => setLocalQty((q) => Math.max(1, q - 1));
 
   const handleAdd = () => {
+    // Validate quantity doesn't exceed stock
+    if (stock !== undefined && localQty > stock) {
+      alert(`Only ${stock} available in stock! Please reduce your quantity.`);
+      setLocalQty(stock); // Reset to max available
+      return;
+    }
+    
     addItem({ id, name, price, imageUrl, quantity: localQty });
     setAdded(true);
     onAddToCart?.();
@@ -80,14 +99,27 @@ const ProductCard = ({
           {description}
         </p>
         {!isSoldOut && (
-          <div className="mt-4 flex items-center gap-2">
-            <Button variant="outline" size="icon" className="h-8 w-8" onClick={decrement}>
-              <Minus className="h-4 w-4" />
-            </Button>
-            <span className="w-8 text-center">{localQty}</span>
-            <Button variant="outline" size="icon" className="h-8 w-8" onClick={increment}>
-              <Plus className="h-4 w-4" />
-            </Button>
+          <div className="mt-4">
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="icon" className="h-8 w-8" onClick={decrement}>
+                <Minus className="h-4 w-4" />
+              </Button>
+              <span className="w-8 text-center">{localQty}</span>
+              <Button 
+                variant="outline" 
+                size="icon" 
+                className="h-8 w-8" 
+                onClick={increment}
+                disabled={stock !== undefined && localQty >= stock}
+              >
+                <Plus className="h-4 w-4" />
+              </Button>
+            </div>
+            {stock !== undefined && (
+              <p className="text-xs text-muted-foreground mt-1">
+                Max: {stock} available
+              </p>
+            )}
           </div>
         )}
         {isSoldOut && (
