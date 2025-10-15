@@ -14,6 +14,7 @@ interface Product {
   description: string;
   price: number;
   image: string;
+  stock?: number;
 }
 
 const HomePage = () => {
@@ -94,6 +95,7 @@ const HomePage = () => {
               description: p.description ?? "",
               price: typeof p.price === "string" ? parseFloat(p.price) : p.price,
               image,
+              stock: p.stock ?? 0,
             };
           });
           setFeaturedProducts(products);
@@ -233,6 +235,7 @@ const HomePage = () => {
                   description={product.description}
                   price={product.price}
                   imageUrl={product.image}
+                  stock={product.stock}
                 />
               ))
             ) : (

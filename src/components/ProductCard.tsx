@@ -11,6 +11,7 @@ interface ProductCardProps {
   price: number;
   description: string;
   imageUrl: string;
+  stock?: number;
   onAddToCart?: () => void;
 }
 
@@ -20,12 +21,16 @@ const ProductCard = ({
   price = 3.99,
   description = "Delicious homemade chocolate chip cookie with chunks of premium chocolate.",
   imageUrl = "https://images.unsplash.com/photo-1499636136210-6f4ee915583e?w=400&q=80",
+  stock,
   onAddToCart,
 }: ProductCardProps) => {
   const { addItem, items, updateQuantity } = useCart();
   const existing = useMemo(() => items.find((i) => i.id === id), [items, id]);
   const [localQty, setLocalQty] = useState<number>(1);
   const [added, setAdded] = useState<boolean>(false);
+  
+  const isSoldOut = stock !== undefined && stock === 0;
+  const isLowStock = stock !== undefined && stock > 0 && stock <= 5;
 
   const increment = () => setLocalQty((q) => Math.min(99, q + 1));
   const decrement = () => setLocalQty((q) => Math.max(1, q - 1));
@@ -38,12 +43,12 @@ const ProductCard = ({
   };
 
   return (
-    <Card className="w-full max-w-[300px] overflow-hidden bg-white">
+    <Card className={`w-full max-w-[300px] overflow-hidden bg-white ${isSoldOut ? 'opacity-75' : ''}`}>
       <div className="relative h-[200px] w-full overflow-hidden">
         <img
           src={imageUrl}
           alt={name}
-          className="h-full w-full object-cover transition-transform duration-300 hover:scale-105"
+          className={`h-full w-full object-cover transition-transform duration-300 hover:scale-105 ${isSoldOut ? 'grayscale' : ''}`}
           onError={(e) => {
             console.log("Image failed to load:", imageUrl);
             console.log("Error event:", e);
@@ -52,6 +57,18 @@ const ProductCard = ({
             console.log("Image loaded successfully:", imageUrl);
           }}
         />
+        {isSoldOut && (
+          <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50">
+            <span className="bg-red-600 text-white px-4 py-2 rounded-lg font-bold text-lg">
+              SOLD OUT
+            </span>
+          </div>
+        )}
+        {isLowStock && !isSoldOut && (
+          <div className="absolute top-2 right-2 bg-orange-500 text-white px-2 py-1 rounded text-xs font-semibold">
+            Only {stock} left!
+          </div>
+        )}
       </div>
 
       <CardContent className="p-4">
@@ -62,23 +79,37 @@ const ProductCard = ({
         <p className="text-sm text-muted-foreground line-clamp-2">
           {description}
         </p>
-        <div className="mt-4 flex items-center gap-2">
-          <Button variant="outline" size="icon" className="h-8 w-8" onClick={decrement}>
-            <Minus className="h-4 w-4" />
-          </Button>
-          <span className="w-8 text-center">{localQty}</span>
-          <Button variant="outline" size="icon" className="h-8 w-8" onClick={increment}>
-            <Plus className="h-4 w-4" />
-          </Button>
-        </div>
+        {!isSoldOut && (
+          <div className="mt-4 flex items-center gap-2">
+            <Button variant="outline" size="icon" className="h-8 w-8" onClick={decrement}>
+              <Minus className="h-4 w-4" />
+            </Button>
+            <span className="w-8 text-center">{localQty}</span>
+            <Button variant="outline" size="icon" className="h-8 w-8" onClick={increment}>
+              <Plus className="h-4 w-4" />
+            </Button>
+          </div>
+        )}
+        {isSoldOut && (
+          <div className="mt-4 text-sm text-red-600 font-semibold">
+            Out of stock
+          </div>
+        )}
       </CardContent>
 
       <CardFooter className="flex justify-between p-4 pt-0">
         <Button variant="outline" size="sm" asChild>
           <Link to={`/product/${id}`}>View Details</Link>
         </Button>
-        <Button size="sm" onClick={handleAdd} variant={added ? "secondary" : "default"}>
-          {added ? (
+        <Button 
+          size="sm" 
+          onClick={handleAdd} 
+          variant={added ? "secondary" : "default"}
+          disabled={isSoldOut}
+        >
+          {isSoldOut ? (
+            "Sold Out"
+          ) : added ? (
             <span className="flex items-center gap-1"><Check className="h-4 w-4" /> Added</span>
           ) : (
             "Add to Cart"

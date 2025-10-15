@@ -9,36 +9,39 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      Cookies: {
-        Row: {
-          id: string;
-          name: string;
-          description: string | null;
-          price: number;
-          image: string | null;
-          category: string;
-          created_at: string | null;
-        };
-        Insert: {
-          id?: string;
-          name: string;
-          description?: string | null;
-          price: number;
-          image?: string | null;
-          category?: string;
-          created_at?: string | null;
-        };
-        Update: {
-          id?: string;
-          name?: string;
-          description?: string | null;
-          price?: number;
-          image?: string | null;
-          category?: string;
-          created_at?: string | null;
-        };
-        Relationships: [];
-      };
+          Cookies: {
+            Row: {
+              id: string;
+              name: string;
+              description: string | null;
+              price: number;
+              image: string | null;
+              category: string;
+              stock: number;
+              created_at: string | null;
+            };
+            Insert: {
+              id?: string;
+              name: string;
+              description?: string | null;
+              price: number;
+              image?: string | null;
+              category?: string;
+              stock?: number;
+              created_at?: string | null;
+            };
+            Update: {
+              id?: string;
+              name?: string;
+              description?: string | null;
+              price?: number;
+              image?: string | null;
+              category?: string;
+              stock?: number;
+              created_at?: string | null;
+            };
+            Relationships: [];
+          };
       orders: {
         Row: {
           id: string;

@@ -24,6 +24,7 @@ interface Product {
   price: number;
   image: string;
   category: string;
+  stock?: number;
 }
 
 const ShopPage = () => {
@@ -198,6 +199,7 @@ const ShopPage = () => {
               price: typeof p.price === "string" ? parseFloat(p.price) : p.price,
               image,
               category: p.category ?? "classic",
+              stock: p.stock ?? 0,
             };
           });
           setProducts(normalized);
@@ -479,6 +481,7 @@ const ShopPage = () => {
                 description={product.description}
                 price={product.price}
                 imageUrl={product.image}
+                stock={product.stock}
                 onAddToCart={() => {}}
               />
             ))}

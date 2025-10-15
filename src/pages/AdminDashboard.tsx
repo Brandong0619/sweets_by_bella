@@ -117,7 +117,7 @@ const AdminDashboard = () => {
             description: p.description || '',
             price: typeof p.price === 'string' ? parseFloat(p.price) : p.price,
             image: p.image || '',
-            stock: 0 // Default stock since we don't have this field yet
+            stock: p.stock || 0
           }));
           setProducts(convertedProducts);
         }
@@ -267,6 +267,7 @@ const AdminDashboard = () => {
               description: editingProduct.description,
               price: editingProduct.price,
               image: editingProduct.image,
+              stock: editingProduct.stock,
               category: 'classic' // Default category
             })
             .eq('id', editingProduct.id);
@@ -292,6 +293,7 @@ const AdminDashboard = () => {
               description: newProduct.description,
               price: newProduct.price,
               image: newProduct.image,
+              stock: newProduct.stock,
               category: 'classic' // Default category
             }])
             .select()
