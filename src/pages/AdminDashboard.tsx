@@ -83,6 +83,15 @@ const AdminDashboard = () => {
   // State for orders management
   const [orders, setOrders] = useState<Order[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(true);
+  const [ordersFilter, setOrdersFilter] = useState<'all' | 'pending' | 'paid'>('all');
+
+  // Filter orders based on selected filter
+  const filteredOrders = orders.filter(order => {
+    if (ordersFilter === 'all') return true;
+    if (ordersFilter === 'pending') return order.payment_status === 'pending';
+    if (ordersFilter === 'paid') return order.payment_status === 'paid';
+    return true;
+  });
 
   // Fetch products from Supabase
   useEffect(() => {
@@ -374,6 +383,45 @@ const AdminDashboard = () => {
     );
   };
 
+  const markOrderAsPaid = async (orderReference: string) => {
+    try {
+      const response = await fetch('https://sweets-by-bella-em82.vercel.app/update-payment-status', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          order_reference: orderReference,
+          payment_status: 'paid',
+          status: 'confirmed'
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update payment status');
+      }
+
+      const result = await response.json();
+      
+      if (result.success) {
+        // Update local state
+        setOrders(
+          orders.map((order) =>
+            order.order_reference === orderReference 
+              ? { ...order, payment_status: 'paid', status: 'confirmed' }
+              : order,
+          ),
+        );
+        alert('Order marked as paid successfully!');
+      } else {
+        throw new Error(result.error || 'Failed to update payment status');
+      }
+    } catch (error) {
+      console.error('Error marking order as paid:', error);
+      alert('Failed to mark order as paid. Please try again.');
+    }
+  };
+
   // If not authenticated, show login form
   if (!isAuthenticated) {
     return (
@@ -553,14 +601,39 @@ const AdminDashboard = () => {
             <CardHeader>
               <CardTitle>Manage Orders</CardTitle>
               <CardDescription>View and update order statuses.</CardDescription>
+              <div className="flex gap-4 mt-4">
+                <Button
+                  variant={ordersFilter === 'all' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setOrdersFilter('all')}
+                >
+                  All Orders
+                </Button>
+                <Button
+                  variant={ordersFilter === 'pending' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setOrdersFilter('pending')}
+                >
+                  Pending Payment
+                </Button>
+                <Button
+                  variant={ordersFilter === 'paid' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setOrdersFilter('paid')}
+                >
+                  Paid Orders
+                </Button>
+              </div>
             </CardHeader>
             <CardContent>
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Order ID</TableHead>
+                    <TableHead>Order Reference</TableHead>
                     <TableHead>Customer</TableHead>
                     <TableHead>Type</TableHead>
+                    <TableHead>Payment Method</TableHead>
+                    <TableHead>Payment Status</TableHead>
                     <TableHead>Date</TableHead>
                     <TableHead>Total</TableHead>
                     <TableHead>Status</TableHead>
@@ -570,24 +643,24 @@ const AdminDashboard = () => {
                 <TableBody>
                   {ordersLoading ? (
                     <TableRow>
-                      <TableCell colSpan={7} className="text-center py-8">
+                      <TableCell colSpan={9} className="text-center py-8">
                         <div className="flex items-center justify-center">
                           <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary mr-2"></div>
                           Loading orders...
                         </div>
                       </TableCell>
                     </TableRow>
-                  ) : orders.length === 0 ? (
+                  ) : filteredOrders.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                      <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
                         No orders found
                       </TableCell>
                     </TableRow>
                   ) : (
-                    orders.map((order) => (
+                    filteredOrders.map((order) => (
                       <TableRow key={order.id}>
                         <TableCell className="font-medium">
-                          {order.stripe_session_id.slice(0, 20)}...
+                          {order.order_reference || order.stripe_session_id?.slice(0, 20) + '...' || 'N/A'}
                         </TableCell>
                         <TableCell>
                           <div>
@@ -611,6 +684,30 @@ const AdminDashboard = () => {
                           </div>
                         </TableCell>
                         <TableCell>
+                          <span className={`px-2 py-1 rounded-full text-xs ${
+                            order.payment_method === 'zelle' 
+                              ? 'bg-blue-100 text-blue-800' 
+                              : order.payment_method === 'cashapp'
+                              ? 'bg-green-100 text-green-800'
+                              : 'bg-gray-100 text-gray-800'
+                          }`}>
+                            {order.payment_method ? order.payment_method.toUpperCase() : 'Stripe'}
+                          </span>
+                        </TableCell>
+                        <TableCell>
+                          <span className={`px-2 py-1 rounded-full text-xs ${
+                            order.payment_status === 'paid' 
+                              ? 'bg-green-100 text-green-800' 
+                              : order.payment_status === 'pending'
+                              ? 'bg-yellow-100 text-yellow-800'
+                              : order.payment_status === 'expired'
+                              ? 'bg-red-100 text-red-800'
+                              : 'bg-gray-100 text-gray-800'
+                          }`}>
+                            {order.payment_status ? order.payment_status.charAt(0).toUpperCase() + order.payment_status.slice(1) : 'Unknown'}
+                          </span>
+                        </TableCell>
+                        <TableCell>
                           {new Date(order.created_at).toLocaleDateString()}
                         </TableCell>
                         <TableCell>${order.total_amount.toFixed(2)}</TableCell>
@@ -628,13 +725,25 @@ const AdminDashboard = () => {
                           </span>
                         </TableCell>
                         <TableCell>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => viewOrderDetails(order.id)}
-                          >
-                            View Details
-                          </Button>
+                          <div className="flex gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => viewOrderDetails(order.id)}
+                            >
+                              View Details
+                            </Button>
+                            {order.payment_status === 'pending' && (
+                              <Button
+                                variant="default"
+                                size="sm"
+                                onClick={() => markOrderAsPaid(order.order_reference || order.id)}
+                                className="bg-green-600 hover:bg-green-700"
+                              >
+                                Mark as Paid
+                              </Button>
+                            )}
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))
