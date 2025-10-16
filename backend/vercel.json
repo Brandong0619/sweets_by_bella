@@ -1,15 +1,13 @@
 {
-  "version": 2,
-  "builds": [
-    {
-      "src": "server.js",
-      "use": "@vercel/node"
+  "functions": {
+    "api/cron/cancel-expired-orders.js": {
+      "maxDuration": 30
     }
-  ],
-  "routes": [
+  },
+  "crons": [
     {
-      "src": "/(.*)",
-      "dest": "server.js"
+      "path": "/api/cron/cancel-expired-orders",
+      "schedule": "*/1 * * * *"
     }
   ]
 }
