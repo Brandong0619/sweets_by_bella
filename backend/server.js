@@ -1,30 +1,54 @@
 const express = require("express");
 const cors = require("cors");
-const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 const { createClient } = require('@supabase/supabase-js');
 const nodemailer = require('nodemailer');
 require("dotenv").config();
+
+// Initialize Stripe only if key is available
+let stripe = null;
+if (process.env.STRIPE_SECRET_KEY) {
+  try {
+    stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
+    console.log('Stripe initialized successfully');
+  } catch (error) {
+    console.error('Failed to initialize Stripe:', error);
+    stripe = null;
+  }
+} else {
+  console.log('Stripe secret key not provided, Stripe functionality disabled');
+}
 
 // Initialize Supabase client
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const supabase = supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey) : null;
 
-// Email configuration
-const emailTransporter = nodemailer.createTransporter({
-  service: 'gmail', // You can change this to your preferred email service
-  auth: {
-    user: process.env.EMAIL_USER, // Your email
-    pass: process.env.EMAIL_PASSWORD // Your email password or app password
+// Email configuration - only create if credentials are available
+let emailTransporter = null;
+if (process.env.EMAIL_USER && process.env.EMAIL_PASSWORD) {
+  try {
+    emailTransporter = nodemailer.createTransporter({
+      service: 'gmail', // You can change this to your preferred email service
+      auth: {
+        user: process.env.EMAIL_USER, // Your email
+        pass: process.env.EMAIL_PASSWORD // Your email password or app password
+      }
+    });
+    console.log('Email transporter initialized successfully');
+  } catch (error) {
+    console.error('Failed to initialize email transporter:', error);
+    emailTransporter = null;
   }
-});
+} else {
+  console.log('Email credentials not provided, email functionality disabled');
+}
 
 // Email helper functions
 const sendEmail = async (to, subject, html) => {
   try {
-    if (!process.env.EMAIL_USER || !process.env.EMAIL_PASSWORD) {
-      console.log('Email not configured, skipping email send');
-      return { success: false, error: 'Email not configured' };
+    if (!emailTransporter) {
+      console.log('Email transporter not available, skipping email send');
+      return { success: false, error: 'Email transporter not available' };
     }
 
     const mailOptions = {
@@ -216,6 +240,15 @@ const generateOrderExpiredEmail = (orderData) => {
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+
+// Add basic error handling
+process.on('uncaughtException', (error) => {
+  console.error('Uncaught Exception:', error);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+});
 
 // Middleware - Temporary permissive CORS for debugging
 app.use(
