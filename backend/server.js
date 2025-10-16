@@ -25,7 +25,7 @@ console.log('🔍 Email configuration check:', {
 
 if (process.env.EMAIL_USER && process.env.EMAIL_PASSWORD) {
   try {
-    emailTransporter = nodemailer.createTransporter({
+    emailTransporter = nodemailer.createTransport({
       service: 'gmail',
       auth: {
         user: process.env.EMAIL_USER,
