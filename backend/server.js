@@ -83,7 +83,7 @@ const sendEmail = async (to, subject, html) => {
 const generateOrderConfirmationEmail = (orderData) => {
   const paymentMethod = orderData.payment_method === 'zelle' ? 'Zelle' : 'Cash App';
   const paymentDetails = orderData.payment_method === 'zelle' 
-    ? 'flawlesscreations@gmail.com' 
+    ? '(956) 373-1079' 
     : '$Actuallybellaa';
   
   return `

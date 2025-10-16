@@ -46,8 +46,8 @@ const PaymentInstructionsPage = () => {
   // Payment details - these would typically come from environment variables
   const paymentDetails = {
     zelle: {
-      email: "flawlesscreations@gmail.com", // Replace with actual Zelle email
-      instructions: "Send payment via Zelle app or your bank's Zelle feature"
+      phone: "(956) 373-1079", // Sister's phone number for Zelle
+      instructions: "Send payment via Zelle app or your bank's Zelle feature using the phone number"
     },
     cashapp: {
       cashtag: "$Actuallybellaa", // Replace with actual Cash App tag
@@ -292,11 +292,11 @@ const PaymentInstructionsPage = () => {
                     <div className="space-y-4">
                       <div>
                         <Label className="text-sm font-medium text-gray-600">
-                          {orderData.payment_method === "zelle" ? "Zelle Email" : "Cash App Tag"}
+                          {orderData.payment_method === "zelle" ? "Zelle Phone Number" : "Cash App Tag"}
                         </Label>
                         <div className="flex items-center gap-2 mt-1">
                           <Input
-                            value={orderData.payment_method === "zelle" ? paymentDetail.email : paymentDetail.cashtag}
+                            value={orderData.payment_method === "zelle" ? paymentDetail.phone : paymentDetail.cashtag}
                             readOnly
                             className="font-mono"
                           />
@@ -304,7 +304,7 @@ const PaymentInstructionsPage = () => {
                             variant="outline"
                             size="sm"
                             onClick={() => copyToClipboard(
-                              orderData.payment_method === "zelle" ? paymentDetail.email : paymentDetail.cashtag,
+                              orderData.payment_method === "zelle" ? paymentDetail.phone : paymentDetail.cashtag,
                               "payment"
                             )}
                           >
