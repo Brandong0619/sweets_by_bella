@@ -2,12 +2,217 @@ const express = require("express");
 const cors = require("cors");
 const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 const { createClient } = require('@supabase/supabase-js');
+const nodemailer = require('nodemailer');
 require("dotenv").config();
 
 // Initialize Supabase client
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const supabase = supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey) : null;
+
+// Email configuration
+const emailTransporter = nodemailer.createTransporter({
+  service: 'gmail', // You can change this to your preferred email service
+  auth: {
+    user: process.env.EMAIL_USER, // Your email
+    pass: process.env.EMAIL_PASSWORD // Your email password or app password
+  }
+});
+
+// Email helper functions
+const sendEmail = async (to, subject, html) => {
+  try {
+    if (!process.env.EMAIL_USER || !process.env.EMAIL_PASSWORD) {
+      console.log('Email not configured, skipping email send');
+      return { success: false, error: 'Email not configured' };
+    }
+
+    const mailOptions = {
+      from: process.env.EMAIL_USER,
+      to: to,
+      subject: subject,
+      html: html
+    };
+
+    const result = await emailTransporter.sendMail(mailOptions);
+    console.log('Email sent successfully:', result.messageId);
+    return { success: true, messageId: result.messageId };
+  } catch (error) {
+    console.error('Error sending email:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+const generateOrderConfirmationEmail = (orderData) => {
+  const paymentMethod = orderData.payment_method === 'zelle' ? 'Zelle' : 'Cash App';
+  const paymentDetails = orderData.payment_method === 'zelle' 
+    ? 'flawlesscreations@gmail.com' 
+    : '$Actuallybellaa';
+  
+  return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: #f8f9fa; padding: 20px; text-align: center; border-radius: 8px; }
+        .content { padding: 20px; }
+        .payment-box { background: #e3f2fd; padding: 15px; border-radius: 8px; margin: 20px 0; }
+        .urgent { background: #fff3cd; border: 1px solid #ffeaa7; padding: 15px; border-radius: 8px; margin: 20px 0; }
+        .footer { text-align: center; padding: 20px; color: #666; font-size: 14px; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1>🍪 Sweets by Bella</h1>
+          <h2>Order Confirmation</h2>
+        </div>
+        
+        <div class="content">
+          <p>Hi ${orderData.customer_name},</p>
+          
+          <p>Thank you for your order! Your order has been placed successfully.</p>
+          
+          <h3>Order Details:</h3>
+          <ul>
+            <li><strong>Order Reference:</strong> ${orderData.order_reference}</li>
+            <li><strong>Total Amount:</strong> $${orderData.total_amount.toFixed(2)}</li>
+            <li><strong>Order Type:</strong> ${orderData.order_type === 'delivery' ? 'Delivery' : 'Pickup'}</li>
+            <li><strong>Payment Method:</strong> ${paymentMethod}</li>
+          </ul>
+          
+          ${orderData.order_type === 'delivery' && orderData.delivery_address ? `
+          <h3>Delivery Address:</h3>
+          <p>
+            ${orderData.delivery_address.name}<br>
+            ${orderData.delivery_address.street}<br>
+            ${orderData.delivery_address.city}, ${orderData.delivery_address.state} ${orderData.delivery_address.zipCode}
+          </p>
+          ` : ''}
+          
+          <div class="payment-box">
+            <h3>💳 Payment Instructions</h3>
+            <p><strong>Send $${orderData.total_amount.toFixed(2)} via ${paymentMethod} to:</strong></p>
+            <p style="font-size: 18px; font-weight: bold;">${paymentDetails}</p>
+            <p><strong>IMPORTANT:</strong> Include "${orderData.order_reference}" in your payment note!</p>
+          </div>
+          
+          <div class="urgent">
+            <h3>⏰ Payment Deadline</h3>
+            <p><strong>You have 5 minutes to complete your payment.</strong> If payment is not received within this time, your order will be automatically cancelled.</p>
+          </div>
+          
+          <p>Once we receive your payment, you'll get another email confirmation and we'll start preparing your delicious cookies!</p>
+          
+          <p>Questions? Reply to this email or contact us directly.</p>
+          
+          <p>Thank you for choosing Sweets by Bella! 🍪</p>
+        </div>
+        
+        <div class="footer">
+          <p>Sweets by Bella<br>
+          <a href="mailto:flawlesscreations@gmail.com">flawlesscreations@gmail.com</a></p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+};
+
+const generatePaymentReceivedEmail = (orderData) => {
+  return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: #d4edda; padding: 20px; text-align: center; border-radius: 8px; }
+        .content { padding: 20px; }
+        .success-box { background: #d1ecf1; padding: 15px; border-radius: 8px; margin: 20px 0; }
+        .footer { text-align: center; padding: 20px; color: #666; font-size: 14px; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1>🍪 Sweets by Bella</h1>
+          <h2>Payment Received! 🎉</h2>
+        </div>
+        
+        <div class="content">
+          <p>Hi ${orderData.customer_name},</p>
+          
+          <div class="success-box">
+            <h3>✅ Payment Confirmed</h3>
+            <p>Great news! We've received your payment for order <strong>${orderData.order_reference}</strong>.</p>
+          </div>
+          
+          <h3>What's Next?</h3>
+          <p>We're now preparing your delicious cookies! ${orderData.order_type === 'delivery' ? 'We\'ll deliver them to your address as soon as they\'re ready.' : 'You can pick them up when they\'re ready.'}</p>
+          
+          <p>We'll send you another update when your order is ready for ${orderData.order_type === 'delivery' ? 'delivery' : 'pickup'}.</p>
+          
+          <p>Thank you for your order! 🍪</p>
+        </div>
+        
+        <div class="footer">
+          <p>Sweets by Bella<br>
+          <a href="mailto:flawlesscreations@gmail.com">flawlesscreations@gmail.com</a></p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+};
+
+const generateOrderExpiredEmail = (orderData) => {
+  return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: #f8d7da; padding: 20px; text-align: center; border-radius: 8px; }
+        .content { padding: 20px; }
+        .expired-box { background: #f8d7da; padding: 15px; border-radius: 8px; margin: 20px 0; }
+        .footer { text-align: center; padding: 20px; color: #666; font-size: 14px; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1>🍪 Sweets by Bella</h1>
+          <h2>Order Expired</h2>
+        </div>
+        
+        <div class="content">
+          <p>Hi ${orderData.customer_name},</p>
+          
+          <div class="expired-box">
+            <h3>⏰ Payment Time Expired</h3>
+            <p>Unfortunately, we didn't receive payment for order <strong>${orderData.order_reference}</strong> within the 5-minute window, so it has been automatically cancelled.</p>
+          </div>
+          
+          <p>Don't worry! You can place a new order anytime at our website.</p>
+          
+          <p>If you sent a payment but it didn't go through, please contact us and we'll help you resolve it.</p>
+          
+          <p>Thank you for your interest in Sweets by Bella! 🍪</p>
+        </div>
+        
+        <div class="footer">
+          <p>Sweets by Bella<br>
+          <a href="mailto:flawlesscreations@gmail.com">flawlesscreations@gmail.com</a></p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+};
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -97,6 +302,35 @@ app.post("/create-order", async (req, res) => {
       // Order was created but items failed - we'll still return success
     }
 
+    // Send order confirmation email
+    try {
+      const emailData = {
+        customer_name,
+        customer_email,
+        order_reference,
+        total_amount,
+        order_type,
+        payment_method,
+        delivery_address
+      };
+      
+      const emailHtml = generateOrderConfirmationEmail(emailData);
+      const emailResult = await sendEmail(
+        customer_email,
+        `Order Confirmation - ${order_reference}`,
+        emailHtml
+      );
+      
+      if (emailResult.success) {
+        console.log('Order confirmation email sent successfully');
+      } else {
+        console.log('Failed to send order confirmation email:', emailResult.error);
+      }
+    } catch (emailError) {
+      console.error('Error sending order confirmation email:', emailError);
+      // Don't fail the order creation if email fails
+    }
+
     res.json({
       success: true,
       order_id: order.id,
@@ -134,6 +368,27 @@ app.post("/update-payment-status", async (req, res) => {
     if (error) {
       console.error("Error updating payment status:", error);
       return res.status(500).json({ error: "Failed to update payment status" });
+    }
+
+    // Send payment received email if status changed to paid
+    if (payment_status === 'paid' && data.customer_email) {
+      try {
+        const emailHtml = generatePaymentReceivedEmail(data);
+        const emailResult = await sendEmail(
+          data.customer_email,
+          `Payment Received - ${data.order_reference}`,
+          emailHtml
+        );
+        
+        if (emailResult.success) {
+          console.log('Payment received email sent successfully');
+        } else {
+          console.log('Failed to send payment received email:', emailResult.error);
+        }
+      } catch (emailError) {
+        console.error('Error sending payment received email:', emailError);
+        // Don't fail the status update if email fails
+      }
     }
 
     res.json({
@@ -228,6 +483,28 @@ app.post("/cancel-expired-orders", async (req, res) => {
     }
 
     console.log(`Cancelled ${expiredOrders.length} expired orders`);
+
+    // Send expiration emails to customers
+    for (const order of expiredOrders) {
+      if (order.customer_email) {
+        try {
+          const emailHtml = generateOrderExpiredEmail(order);
+          const emailResult = await sendEmail(
+            order.customer_email,
+            `Order Expired - ${order.order_reference}`,
+            emailHtml
+          );
+          
+          if (emailResult.success) {
+            console.log(`Expiration email sent to ${order.customer_email}`);
+          } else {
+            console.log(`Failed to send expiration email to ${order.customer_email}:`, emailResult.error);
+          }
+        } catch (emailError) {
+          console.error(`Error sending expiration email to ${order.customer_email}:`, emailError);
+        }
+      }
+    }
 
     res.json({
       success: true,
