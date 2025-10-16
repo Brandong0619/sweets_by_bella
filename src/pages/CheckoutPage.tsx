@@ -104,27 +104,6 @@ const CheckoutPage = () => {
         expiresInMinutes: 5
       });
 
-      // Test CORS first
-      console.log('Testing CORS connection...');
-      try {
-        const corsTest = await fetch('https://sweets-by-bella-em82.vercel.app/test-cors', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ test: 'cors' }),
-        });
-        
-        if (corsTest.ok) {
-          const corsResult = await corsTest.json();
-          console.log('CORS test successful:', corsResult);
-        } else {
-          console.error('CORS test failed:', corsTest.status, corsTest.statusText);
-        }
-      } catch (corsError) {
-        console.error('CORS test error:', corsError);
-      }
-
       // Call backend to create order
       const response = await fetch('https://sweets-by-bella-em82.vercel.app/create-order', {
         method: 'POST',

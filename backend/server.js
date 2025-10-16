@@ -17,6 +17,12 @@ if (supabase) {
 
 // Email configuration - only create if credentials are available
 let emailTransporter = null;
+console.log('🔍 Email configuration check:', {
+  hasEmailUser: !!process.env.EMAIL_USER,
+  hasEmailPassword: !!process.env.EMAIL_PASSWORD,
+  emailUser: process.env.EMAIL_USER ? process.env.EMAIL_USER.substring(0, 5) + '...' : 'not set'
+});
+
 if (process.env.EMAIL_USER && process.env.EMAIL_PASSWORD) {
   try {
     emailTransporter = nodemailer.createTransporter({
@@ -33,13 +39,16 @@ if (process.env.EMAIL_USER && process.env.EMAIL_PASSWORD) {
   }
 } else {
   console.log('⚠️ Email credentials not provided - email functionality disabled');
+  console.log('📧 To enable emails, set EMAIL_USER and EMAIL_PASSWORD in Vercel environment variables');
 }
 
 // Email helper functions
 const sendEmail = async (to, subject, html) => {
   try {
+    console.log('📧 Attempting to send email:', { to, subject });
+    
     if (!emailTransporter) {
-      console.log('Email transporter not available, skipping email send');
+      console.log('❌ Email transporter not available, skipping email send');
       return { success: false, error: 'Email transporter not available' };
     }
 
@@ -50,11 +59,23 @@ const sendEmail = async (to, subject, html) => {
       html: html
     };
 
+    console.log('📤 Sending email with options:', {
+      from: mailOptions.from,
+      to: mailOptions.to,
+      subject: mailOptions.subject,
+      hasHtml: !!mailOptions.html
+    });
+
     const result = await emailTransporter.sendMail(mailOptions);
     console.log('✅ Email sent successfully:', result.messageId);
     return { success: true, messageId: result.messageId };
   } catch (error) {
     console.error('❌ Error sending email:', error);
+    console.error('❌ Error details:', {
+      message: error.message,
+      code: error.code,
+      response: error.response
+    });
     return { success: false, error: error.message };
   }
 };
