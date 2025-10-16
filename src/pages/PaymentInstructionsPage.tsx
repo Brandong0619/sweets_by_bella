@@ -121,6 +121,7 @@ const PaymentInstructionsPage = () => {
           setTimeLeft(0);
         } else {
           console.log("Database shows order as still pending, keeping current state");
+          // Don't override timer state if database shows pending and timer is still running
         }
       }
     } catch (error) {
@@ -137,6 +138,7 @@ const PaymentInstructionsPage = () => {
     const timer = setInterval(() => {
       setTimeLeft((prev) => {
         if (prev <= 1) {
+          console.log("Timer reached 0, setting expired to true");
           setIsExpired(true);
           return 0;
         }
@@ -145,7 +147,7 @@ const PaymentInstructionsPage = () => {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [timeLeft]);
+  }, []); // Remove timeLeft dependency to prevent timer recreation
 
   const formatTime = (seconds: number) => {
     const minutes = Math.floor(seconds / 60);
