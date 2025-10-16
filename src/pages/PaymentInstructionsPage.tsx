@@ -37,6 +37,11 @@ const PaymentInstructionsPage = () => {
   const [copied, setCopied] = useState<string | null>(null);
   const [isExpired, setIsExpired] = useState(false);
 
+  // Debug when isExpired changes
+  useEffect(() => {
+    console.log("isExpired state changed to:", isExpired);
+  }, [isExpired]);
+
   // Payment details - these would typically come from environment variables
   const paymentDetails = {
     zelle: {
@@ -114,6 +119,8 @@ const PaymentInstructionsPage = () => {
           console.log("Database shows order as expired/cancelled, updating local state");
           setIsExpired(true);
           setTimeLeft(0);
+        } else {
+          console.log("Database shows order as still pending, keeping current state");
         }
       }
     } catch (error) {
