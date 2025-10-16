@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Clock, Copy, CheckCircle, AlertCircle, ArrowLeft, Mail, Phone } from "lucide-react";
@@ -36,6 +36,7 @@ const PaymentInstructionsPage = () => {
   const [timeLeft, setTimeLeft] = useState<number>(0);
   const [copied, setCopied] = useState<string | null>(null);
   const [isExpired, setIsExpired] = useState(false);
+  const timerStarted = useRef(false);
 
   // Debug when isExpired changes
   useEffect(() => {
@@ -129,14 +130,18 @@ const PaymentInstructionsPage = () => {
     }
   };
 
+  // Timer effect - only start once when orderData is loaded
   useEffect(() => {
-    if (timeLeft <= 0) {
-      setIsExpired(true);
+    if (!orderData || timerStarted.current || timeLeft <= 0) {
       return;
     }
 
+    console.log("Starting timer with timeLeft:", timeLeft);
+    timerStarted.current = true;
+
     const timer = setInterval(() => {
       setTimeLeft((prev) => {
+        console.log("Timer tick, prev timeLeft:", prev);
         if (prev <= 1) {
           console.log("Timer reached 0, setting expired to true");
           setIsExpired(true);
@@ -146,8 +151,11 @@ const PaymentInstructionsPage = () => {
       });
     }, 1000);
 
-    return () => clearInterval(timer);
-  }, []); // Remove timeLeft dependency to prevent timer recreation
+    return () => {
+      console.log("Clearing timer");
+      clearInterval(timer);
+    };
+  }, [orderData]); // Only run when orderData is loaded
 
   const formatTime = (seconds: number) => {
     const minutes = Math.floor(seconds / 60);
