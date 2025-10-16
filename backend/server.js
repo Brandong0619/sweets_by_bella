@@ -217,33 +217,13 @@ const generateOrderExpiredEmail = (orderData) => {
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// Middleware - More permissive CORS for debugging
+// Middleware - Temporary permissive CORS for debugging
 app.use(
   cors({
-    origin: function (origin, callback) {
-      // Allow requests with no origin (like mobile apps or curl requests)
-      if (!origin) return callback(null, true);
-      
-      // Allow all sweets-by-bella Vercel domains
-      if (origin.match(/^https:\/\/sweets-by-bella.*\.vercel\.app$/)) {
-        return callback(null, true);
-      }
-      
-      // Allow specific domains
-      const allowedOrigins = [
-        process.env.FRONTEND_URL,
-        'https://sweets-by-bella-pln9.vercel.app',
-        'https://sweets-by-bella-pln9-de08rxvlp.vercel.app'
-      ];
-      
-      if (allowedOrigins.includes(origin)) {
-        return callback(null, true);
-      }
-      
-      console.log('CORS blocked origin:', origin);
-      callback(new Error('Not allowed by CORS'));
-    },
+    origin: true, // Allow all origins temporarily
     credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Origin', 'X-Requested-With', 'Content-Type', 'Accept', 'Authorization']
   })
 );
 
@@ -254,17 +234,24 @@ app.use((req, res, next) => {
     method: req.method,
     url: req.url
   });
+  
+  // Manually set CORS headers
+  res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  
   next();
 });
 
 // Handle preflight requests
 app.options('*', (req, res) => {
   console.log('Preflight request received:', req.headers.origin);
-  res.header('Access-Control-Allow-Origin', req.headers.origin);
+  res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
   res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
   res.header('Access-Control-Allow-Credentials', 'true');
-  res.sendStatus(200);
+  res.status(200).end();
 });
 app.use(express.json());
 app.use(express.raw({ type: "application/json" }));
@@ -276,6 +263,10 @@ app.get("/", (req, res) => {
 
 // Create order endpoint for Zelle/Cash App payments
 app.post("/create-order", async (req, res) => {
+  // Set CORS headers for this specific endpoint
+  res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  
   try {
     const {
       customer_name,
