@@ -261,6 +261,29 @@ app.get("/", (req, res) => {
   res.json({ message: "Sweets by Bella Backend API" });
 });
 
+// Test endpoint to verify CORS is working
+app.get("/test-cors", (req, res) => {
+  res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  res.json({ 
+    message: "CORS test successful", 
+    origin: req.headers.origin,
+    timestamp: new Date().toISOString()
+  });
+});
+
+// Test POST endpoint
+app.post("/test-cors", (req, res) => {
+  res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  res.json({ 
+    message: "POST CORS test successful", 
+    origin: req.headers.origin,
+    body: req.body,
+    timestamp: new Date().toISOString()
+  });
+});
+
 // Create order endpoint for Zelle/Cash App payments
 app.post("/create-order", async (req, res) => {
   // Set CORS headers for this specific endpoint
