@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { supabase } from "@/lib/supabaseClient";
 
 interface OrderData {
   customer_name: string;
@@ -76,11 +77,49 @@ const PaymentInstructionsPage = () => {
         console.log("Order still valid, time left:", Math.floor(diff / 1000), "seconds");
         setTimeLeft(Math.floor(diff / 1000));
       }
+
+      // Also fetch from database to compare
+      if (supabase && orderReference) {
+        fetchOrderFromDatabase();
+      }
     } else {
       // No order data found, redirect to cart
       navigate("/cart");
     }
   }, [navigate, orderReference]);
+
+  const fetchOrderFromDatabase = async () => {
+    if (!supabase || !orderReference) return;
+    
+    try {
+      console.log("Fetching order from database:", orderReference);
+      const { data: order, error } = await supabase
+        .from('orders')
+        .select('*')
+        .eq('order_reference', orderReference)
+        .single();
+
+      if (error) {
+        console.error("Error fetching order from database:", error);
+      } else {
+        console.log("Database order status:", {
+          payment_status: order.payment_status,
+          status: order.status,
+          expires_at: order.expires_at,
+          created_at: order.created_at
+        });
+        
+        // If database shows expired/cancelled, update local state
+        if (order.payment_status === 'expired' || order.status === 'cancelled') {
+          console.log("Database shows order as expired/cancelled, updating local state");
+          setIsExpired(true);
+          setTimeLeft(0);
+        }
+      }
+    } catch (error) {
+      console.error("Error in fetchOrderFromDatabase:", error);
+    }
+  };
 
   useEffect(() => {
     if (timeLeft <= 0) {
