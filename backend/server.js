@@ -217,16 +217,55 @@ const generateOrderExpiredEmail = (orderData) => {
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// Middleware
+// Middleware - More permissive CORS for debugging
 app.use(
   cors({
-    origin: [
-      process.env.FRONTEND_URL,
-      /^https:\/\/sweets-by-bella.*\.vercel\.app$/
-    ],
+    origin: function (origin, callback) {
+      // Allow requests with no origin (like mobile apps or curl requests)
+      if (!origin) return callback(null, true);
+      
+      // Allow all sweets-by-bella Vercel domains
+      if (origin.match(/^https:\/\/sweets-by-bella.*\.vercel\.app$/)) {
+        return callback(null, true);
+      }
+      
+      // Allow specific domains
+      const allowedOrigins = [
+        process.env.FRONTEND_URL,
+        'https://sweets-by-bella-pln9.vercel.app',
+        'https://sweets-by-bella-pln9-de08rxvlp.vercel.app'
+      ];
+      
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+      
+      console.log('CORS blocked origin:', origin);
+      callback(new Error('Not allowed by CORS'));
+    },
     credentials: true,
   })
 );
+
+// Add CORS debugging middleware
+app.use((req, res, next) => {
+  console.log('CORS Debug:', {
+    origin: req.headers.origin,
+    method: req.method,
+    url: req.url
+  });
+  next();
+});
+
+// Handle preflight requests
+app.options('*', (req, res) => {
+  console.log('Preflight request received:', req.headers.origin);
+  res.header('Access-Control-Allow-Origin', req.headers.origin);
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  res.sendStatus(200);
+});
 app.use(express.json());
 app.use(express.raw({ type: "application/json" }));
 
