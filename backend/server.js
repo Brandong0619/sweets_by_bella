@@ -205,6 +205,125 @@ const generatePaymentReceivedEmail = (orderData) => {
   `;
 };
 
+const generateAdminNewOrderEmail = (orderData, orderItems) => {
+  const paymentMethod = orderData.payment_method === 'zelle' ? 'Zelle' : 'Cash App';
+  const paymentDetails = orderData.payment_method === 'zelle' 
+    ? '(956) 373-1079' 
+    : '$Actuallybellaa';
+  
+  return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 700px; margin: 0 auto; padding: 20px; }
+        .header { background: #f8f9fa; padding: 20px; text-align: center; border-radius: 8px; border-left: 5px solid #007bff; }
+        .content { padding: 20px; }
+        .alert-box { background: #fff3cd; border: 1px solid #ffeaa7; padding: 15px; border-radius: 8px; margin: 20px 0; }
+        .order-box { background: #e3f2fd; padding: 15px; border-radius: 8px; margin: 20px 0; }
+        .items-table { width: 100%; border-collapse: collapse; margin: 15px 0; }
+        .items-table th, .items-table td { padding: 10px; text-align: left; border-bottom: 1px solid #ddd; }
+        .items-table th { background-color: #f8f9fa; font-weight: bold; }
+        .total-row { font-weight: bold; background-color: #f8f9fa; }
+        .footer { text-align: center; padding: 20px; color: #666; font-size: 14px; }
+        .cta-button { display: inline-block; background: #007bff; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; margin: 10px 0; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1>🍪 Sweets by Bella - Admin</h1>
+          <h2>New Order Received! 📦</h2>
+        </div>
+        
+        <div class="content">
+          <div class="alert-box">
+            <h3>🚨 Action Required</h3>
+            <p><strong>A new order has been placed and is waiting for payment verification!</strong></p>
+          </div>
+          
+          <h3>📋 Order Details</h3>
+          <div class="order-box">
+            <p><strong>Order Reference:</strong> ${orderData.order_reference}</p>
+            <p><strong>Customer:</strong> ${orderData.customer_name}</p>
+            <p><strong>Email:</strong> ${orderData.customer_email}</p>
+            <p><strong>Phone:</strong> ${orderData.customer_phone}</p>
+            <p><strong>Order Type:</strong> ${orderData.order_type === 'delivery' ? 'Delivery' : 'Pickup'}</p>
+            <p><strong>Payment Method:</strong> ${paymentMethod}</p>
+            <p><strong>Total Amount:</strong> $${orderData.total_amount.toFixed(2)}</p>
+            <p><strong>Order Time:</strong> ${new Date(orderData.created_at || new Date()).toLocaleString()}</p>
+          </div>
+          
+          ${orderData.order_type === 'delivery' && orderData.delivery_address ? `
+          <h3>📍 Delivery Address</h3>
+          <div class="order-box">
+            <p><strong>Name:</strong> ${orderData.delivery_address.name}</p>
+            <p><strong>Address:</strong> ${orderData.delivery_address.street}</p>
+            <p><strong>City:</strong> ${orderData.delivery_address.city}, ${orderData.delivery_address.state} ${orderData.delivery_address.zipCode}</p>
+            ${orderData.delivery_instructions ? `<p><strong>Instructions:</strong> ${orderData.delivery_instructions}</p>` : ''}
+          </div>
+          ` : ''}
+          
+          <h3>🛒 Order Items</h3>
+          <table class="items-table">
+            <thead>
+              <tr>
+                <th>Item</th>
+                <th>Price</th>
+                <th>Quantity</th>
+                <th>Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${orderItems.map(item => `
+                <tr>
+                  <td>${item.product_name}</td>
+                  <td>$${item.product_price.toFixed(2)}</td>
+                  <td>${item.quantity}</td>
+                  <td>$${(item.product_price * item.quantity).toFixed(2)}</td>
+                </tr>
+              `).join('')}
+              <tr class="total-row">
+                <td colspan="3"><strong>Total</strong></td>
+                <td><strong>$${orderData.total_amount.toFixed(2)}</strong></td>
+              </tr>
+            </tbody>
+          </table>
+          
+          <h3>💳 Payment Instructions for Customer</h3>
+          <div class="order-box">
+            <p><strong>Customer should send $${orderData.total_amount.toFixed(2)} via ${paymentMethod} to:</strong></p>
+            <p style="font-size: 18px; font-weight: bold; color: #007bff;">${paymentDetails}</p>
+            <p><strong>With order reference:</strong> ${orderData.order_reference}</p>
+            <p><strong>Payment deadline:</strong> 5 minutes from order placement</p>
+          </div>
+          
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="https://sweets-by-bella-pln9.vercel.app/admin" class="cta-button">
+              📊 View Order in Admin Dashboard
+            </a>
+          </div>
+          
+          <p><strong>Next Steps:</strong></p>
+          <ol>
+            <li>Check your ${paymentMethod} account for payment</li>
+            <li>Look for payment with order reference: <strong>${orderData.order_reference}</strong></li>
+            <li>Mark order as "Paid" in the admin dashboard</li>
+            <li>Start preparing the order!</li>
+          </ol>
+        </div>
+        
+        <div class="footer">
+          <p>Sweets by Bella Admin Dashboard<br>
+          <a href="mailto:gonzalezbella1010@gmail.com">gonzalezbella1010@gmail.com</a></p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+};
+
 const app = express();
 const PORT = process.env.PORT || 3001;
 
@@ -355,7 +474,7 @@ app.post("/create-order", async (req, res) => {
       // Order was created but items failed - we'll still return success
     }
 
-    // Send order confirmation email
+    // Send order confirmation email to customer
     try {
       const emailData = {
         customer_name,
@@ -381,6 +500,38 @@ app.post("/create-order", async (req, res) => {
       }
     } catch (emailError) {
       console.error('❌ Error sending order confirmation email:', emailError);
+      // Don't fail the order creation if email fails
+    }
+
+    // Send admin notification email
+    try {
+      const adminEmailData = {
+        customer_name,
+        customer_email,
+        customer_phone,
+        order_reference,
+        total_amount,
+        order_type,
+        payment_method,
+        delivery_address,
+        delivery_instructions,
+        created_at: new Date().toISOString()
+      };
+      
+      const adminEmailHtml = generateAdminNewOrderEmail(adminEmailData, orderItems);
+      const adminEmailResult = await sendEmail(
+        'gonzalezbella1010@gmail.com', // Sister's email
+        `🚨 New Order Alert - ${order_reference}`,
+        adminEmailHtml
+      );
+      
+      if (adminEmailResult.success) {
+        console.log('✅ Admin notification email sent successfully');
+      } else {
+        console.log('⚠️ Failed to send admin notification email:', adminEmailResult.error);
+      }
+    } catch (emailError) {
+      console.error('❌ Error sending admin notification email:', emailError);
       // Don't fail the order creation if email fails
     }
 
