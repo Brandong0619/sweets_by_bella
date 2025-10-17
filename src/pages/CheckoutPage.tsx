@@ -56,7 +56,18 @@ const CheckoutPage = () => {
   }, []);
 
   const subtotal = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  const totalQuantity = items.reduce((sum, item) => sum + item.quantity, 0);
   const total = subtotal; // No tax or shipping for Zelle/Cash App
+  
+  // Check if delivery is available (minimum 6 cookies required)
+  const isDeliveryAvailable = totalQuantity >= 6;
+  
+  // Automatically switch to pickup if delivery is not available
+  useEffect(() => {
+    if (!isDeliveryAvailable && orderType === "delivery") {
+      setOrderType("pickup");
+    }
+  }, [isDeliveryAvailable, orderType]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -67,6 +78,12 @@ const CheckoutPage = () => {
     }
     
     if (orderType === "delivery") {
+      // Check minimum quantity for delivery
+      if (!isDeliveryAvailable) {
+        alert("Minimum order of 6 cookies required for delivery. Please choose pickup or add more items to your cart.");
+        return;
+      }
+      
       const { name, street, city, state, zipCode } = deliveryAddress;
       if (!name || !street || !city || !state || !zipCode) {
         alert("Please fill in all delivery address fields");
@@ -250,13 +267,33 @@ const CheckoutPage = () => {
                         </Label>
                       </div>
                       <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="delivery" id="delivery" />
-                        <Label htmlFor="delivery" className="flex items-center gap-2">
+                        <RadioGroupItem 
+                          value="delivery" 
+                          id="delivery" 
+                          disabled={!isDeliveryAvailable}
+                        />
+                        <Label 
+                          htmlFor="delivery" 
+                          className={`flex items-center gap-2 ${!isDeliveryAvailable ? 'text-gray-400' : ''}`}
+                        >
                           <MapPin className="h-4 w-4" />
                           Delivery
+                          {!isDeliveryAvailable && (
+                            <span className="text-xs text-gray-500 ml-2">
+                              (Minimum 6 cookies required - you have {totalQuantity})
+                            </span>
+                          )}
                         </Label>
                       </div>
                     </RadioGroup>
+                    {!isDeliveryAvailable && (
+                      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                        <p className="text-sm text-yellow-800">
+                          <strong>Delivery unavailable:</strong> Minimum order of 6 cookies required for delivery. 
+                          You currently have {totalQuantity} cookie{totalQuantity !== 1 ? 's' : ''} in your cart.
+                        </p>
+                      </div>
+                    )}
                   </div>
 
                   {/* Delivery Address */}
